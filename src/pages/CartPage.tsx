@@ -5,7 +5,6 @@ import Header from "../ui/Header";
 import backgroundImage from '../Login_Sign/photo.jpeg';
 import WorkshopRegistrationForm from './WorkshopRegistrationForm';
 import ThemedModal from '../components/ThemedModal';
-import API_BASE_URL from './Config'; // adjust path if needed
 
 interface CartItem {
   cartId: number;
@@ -39,7 +38,7 @@ const CartPage: React.FC = () => {
     const fetchCartItems = async () => {
       if (!user) return;
       try {
-        const response = await axios.get(`${API_BASE_URL}/cart/${user.id}`);
+        const response = await axios.get(`/api/cart/${user.id}`);
         setCartItems(response.data);
       } catch (error) {
         showModal('Error', 'Error fetching cart items.');
@@ -53,7 +52,7 @@ const CartPage: React.FC = () => {
   const handleRemoveFromCart = async (cartId: number) => {
     if (!user) return;
     try {
-      await axios.delete(`${API_BASE_URL}/cart/${cartId}`, {
+      await axios.delete(`/api/cart/${cartId}`, {
         data: { userEmail: user.email },
       });
       setCartItems(cartItems.filter((item) => item.cartId !== cartId));
@@ -73,7 +72,7 @@ const CartPage: React.FC = () => {
     } else {
       for (const item of freeEvents) {
         try {
-          await axios.post(`${API_BASE_URL}/registrations/simple`, {
+          await axios.post(`/api/registrations/simple`, {
             userEmail: user.email,
             eventId: item.eventId,
           });
@@ -95,7 +94,7 @@ const CartPage: React.FC = () => {
     const freeEvents = cartItems.filter(item => item.eventDetails.registrationFees === 0);
     for (const item of freeEvents) {
       try {
-        await axios.post(`${API_BASE_URL}/registrations/simple`, {
+        await axios.post(`/api/registrations/simple`, {
           userEmail: user.email,
           eventId: item.eventId,
         });
@@ -106,7 +105,7 @@ const CartPage: React.FC = () => {
 
     for (const item of cartItems) {
       try {
-        await axios.delete(`${API_BASE_URL}/cart/${item.cartId}`, {
+        await axios.delete(`/api/cart/${item.cartId}`, {
           data: { userEmail: user.email },
         });
       } catch (error) {

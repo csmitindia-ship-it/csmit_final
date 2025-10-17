@@ -9,6 +9,7 @@ import { useAuth } from '../context/AuthContext';
 import ThemedModal from '../components/ThemedModal';
 import EventCountdown from '../components/EventCountdown'; 
 import WorkshopRegistrationModal from '../components/WorkshopRegistrationModal';
+import axios from 'axios';
 
 interface Round {
   roundNumber: number;
@@ -36,7 +37,6 @@ interface Event {
 }
 
 const EventsPage: React.FC = () => {
-  console.log('EventsPage: Component rendered.');
   const [events, setEvents] = useState<Event[]>([]);
   const [activeSymposium, setActiveSymposium] = useState<'Enigma' | 'Carteblanche'>('Enigma');
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
@@ -47,7 +47,7 @@ const EventsPage: React.FC = () => {
   const [modalContent, setModalContent] = useState({ title: '', message: '' });
   const [eventCategories, setEventCategories] = useState<string[]>([]);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
-  const [selectedEvent, setSelectedEvent] = useState<Event | null>(null); // New state for selected event
+  const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [isWorkshopModalOpen, setIsWorkshopModalOpen] = useState(false);
   const [selectedWorkshopEvent, setSelectedWorkshopEvent] = useState<Event | null>(null);
   const [cartItems, setCartItems] = useState<any[]>([]);
@@ -56,6 +56,8 @@ const EventsPage: React.FC = () => {
 
   const { user, isLoggedIn, loading: authLoading } = useAuth();
   const navigate = useNavigate();
+
+  const MIT_COLLEGE_NAME = "Madras Institute of Technology";
 
   const isSymposiumOpen = (symposiumName: 'Enigma' | 'Carteblanche') => {
     const symposium = symposiumStatus.find(s => s.symposiumName === symposiumName);
@@ -77,62 +79,46 @@ const EventsPage: React.FC = () => {
 
   const fetchEvents = async () => {
     setIsLoading(true);
-    console.log('EventsPage: Fetching events...');
     try {
-            const response = await fetch('http://localhost:5001/events');
-      const data: Event[] = await response.json();
-      setEvents(data);
-      console.log('EventsPage: Events fetched successfully.', data);
+      const response = await axios.get('/api/events');
+      setEvents(response.data);
     } catch (error) {
-      console.error('EventsPage: Error fetching events:', error);
+      console.error('Error fetching events:', error);
     } finally {
       setIsLoading(false);
-      console.log('EventsPage: Finished fetching events.');
     }
   };
 
   const fetchSymposiumStatus = async () => {
     try {
-      const response = await fetch('http://localhost:5001/symposium/status');
-      const data = await response.json();
-      setSymposiumStatus(data.data);
+      const response = await axios.get('/api/symposium/status');
+      setSymposiumStatus(response.data.data);
     } catch (error) {
       console.error('Error fetching symposium status:', error);
     }
   };
 
   const fetchRegisteredEvents = async () => {
-    if (!user || !user.email) {
-      console.log('EventsPage: User or user.email is undefined, skipping fetchRegisteredEvents.', { user });
-      return;
-    }
-    console.log('EventsPage: Fetching registered events for user.email:', user.email);
+    if (!user || !user.email) return;
     try {
-      const response = await fetch(`http://localhost:5001/registrations/by-email/${user.email}`);
-      const data = await response.json();
-      console.log('EventsPage: Raw data from backend for registered events:', data);
-      setRegisteredEvents(data.map((reg: any) => reg.eventId));
-      console.log('EventsPage: Registered events fetched:', data.map((reg: any) => reg.eventId));
+      const response = await axios.get(`/api/registrations/by-email/${user.email}`);
+      setRegisteredEvents(response.data.map((reg: any) => reg.eventId));
     } catch (error) {
       console.error('Error fetching registered events:', error);
     }
   };
 
   const fetchCartItems = async () => {
-    if (!user || !user.id) {
-      return;
-    }
+    if (!user || !user.id) return;
     try {
-      const response = await fetch(`http://localhost:5001/cart/${user.id}`);
-      const data = await response.json();
-      setCartItems(data);
+      const response = await axios.get(`/api/cart/${user.id}`);
+      setCartItems(response.data);
     } catch (error) {
       console.error('Error fetching cart items:', error);
     }
   };
 
   useEffect(() => {
-    console.log('EventsPage: useEffect - initial render or dependency change.');
     fetchEvents();
     fetchSymposiumStatus();
     if (isLoggedIn) {
@@ -141,7 +127,6 @@ const EventsPage: React.FC = () => {
     }
 
     const handleRegistrationComplete = () => {
-      console.log('registrationComplete event received');
       fetchRegisteredEvents();
     };
 
@@ -153,36 +138,33 @@ const EventsPage: React.FC = () => {
   }, [isLoggedIn, user]);
 
   useEffect(() => {
-    // Filter events by activeSymposium to get relevant categories
     const symposiumFilteredEvents = events.filter(event => event.symposiumName === activeSymposium);
 
     if (symposiumFilteredEvents.length > 0) {
       const categories = Array.from(new Set(symposiumFilteredEvents.map(event => event.eventCategory)));
       setEventCategories(categories);
-      // Only set activeCategory if the current activeCategory is not in the new list
-      // or if there was no activeCategory before.
       if (!activeCategory || !categories.includes(activeCategory)) {
         setActiveCategory(categories[0] || null);
       }
     } else {
-      // If no events for the active symposium, clear categories and activeCategory
       setEventCategories([]);
       setActiveCategory(null);
     }
-  }, [events, activeSymposium]); // Add activeSymposium to dependencies
+  }, [events, activeSymposium]);
 
   useEffect(() => {
-    // This effect runs when cartItems changes. If a cart action was in progress,
-    // it means the action is now complete and the state has been updated, so we can
-    // re-enable the button.
     if (isCartActionInProgress) {
       setIsCartActionInProgress(false);
     }
   }, [cartItems]);
 
-  console.log('EventsPage: Current state - isLoading:', isLoading, 'authLoading:', authLoading, 'isLoggedIn:', isLoggedIn, 'user:', user);
-
   const filteredEvents = events
+    .filter(event => {
+      if (user && user.college !== MIT_COLLEGE_NAME) {
+        return event.symposiumName === 'Carteblanche';
+      }
+      return true;
+    })
     .filter(event => event.symposiumName === activeSymposium)
     .filter(event => activeCategory ? event.eventCategory === activeCategory : true)
     .sort((a, b) => a.eventCategory.localeCompare(b.eventCategory));
@@ -204,151 +186,66 @@ const EventsPage: React.FC = () => {
     }
 
     if (!user || !user.email) {
-      setModalContent({
-        title: 'Error',
-        message: 'Could not identify user. Please try logging in again.',
-      });
+      setModalContent({ title: 'Error', message: 'Could not identify user. Please try logging in again.' });
       setIsModalOpen(true);
       return;
     }
 
     setIsCartActionInProgress(true);
     try {
-      const response = await fetch('http://localhost:5001/cart', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          userEmail: user.email,
-          eventId: event.id,
-          symposiumName: event.symposiumName,
-        }),
+      const response = await axios.post('/api/cart', {
+        userEmail: user.email,
+        eventId: event.id,
+        symposiumName: event.symposiumName,
       });
 
-      const data = await response.json();
-
-      if (response.ok) {
-        setModalContent({
-          title: 'Success',
-          message: 'Event added to cart successfully!',
-        });
-        await fetchCartItems(); // Refresh cart items
-        setIsModalOpen(true);
-      } else {
-        setModalContent({
-          title: 'Error',
-          message: data.message || 'Failed to add event to cart.',
-        });
-        setIsModalOpen(true);
-        setIsCartActionInProgress(false); // Re-enable on failure
-      }
-    } catch (error) {
-      console.error('Error adding to cart:', error);
-      setModalContent({
-        title: 'Error',
-        message: 'An unexpected error occurred. Please try again.',
-      });
+      setModalContent({ title: 'Success', message: 'Event added to cart successfully!' });
+      await fetchCartItems();
       setIsModalOpen(true);
-      setIsCartActionInProgress(false); // Re-enable on failure
+    } catch (error: any) {
+      setModalContent({ title: 'Error', message: error.response?.data?.message || 'Failed to add event to cart.' });
+      setIsModalOpen(true);
+      setIsCartActionInProgress(false);
     }
   };
 
   const handleRemoveFromCart = async (eventId: number) => {
-    if (!user || !user.email) {
-      return;
-    }
+    if (!user || !user.email) return;
 
     const cartItem = cartItems.find(item => item.eventId === eventId);
-    if (!cartItem) {
-      return;
-    }
+    if (!cartItem) return;
 
     setIsCartActionInProgress(true);
     try {
-      const response = await fetch(`http://localhost:5001/cart/${cartItem.cartId}`,
-        {
-          method: 'DELETE',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ userEmail: user.email }),
-        }
-      );
-
-      const data = await response.json();
-
-      if (response.ok) {
-        setModalContent({
-          title: 'Success',
-          message: 'Event removed from cart successfully!',
-        });
-        await fetchCartItems(); // Refresh cart items
-        setIsModalOpen(true);
-        setTimeout(() => setIsModalOpen(false), 2000); // Auto-close after 2 seconds
-      } else {
-        setModalContent({
-          title: 'Error',
-          message: data.message || 'Failed to remove event from cart.',
-        });
-        setIsModalOpen(true);
-        setTimeout(() => setIsModalOpen(false), 2000); // Auto-close after 2 seconds
-        setIsCartActionInProgress(false); // Re-enable on failure
-      }
-    } catch (error) {
-      console.error('Error removing from cart:', error);
-      setModalContent({
-        title: 'Error',
-        message: 'An unexpected error occurred. Please try again.',
-      });
+      await axios.delete(`/api/cart/${cartItem.cartId}`, { data: { userEmail: user.email } });
+      setModalContent({ title: 'Success', message: 'Event removed from cart successfully!' });
+      await fetchCartItems();
       setIsModalOpen(true);
-      setIsCartActionInProgress(false); // Re-enable on failure
+      setTimeout(() => setIsModalOpen(false), 2000);
+    } catch (error: any) {
+      setModalContent({ title: 'Error', message: error.response?.data?.message || 'Failed to remove event from cart.' });
+      setIsModalOpen(true);
+      setTimeout(() => setIsModalOpen(false), 2000);
+      setIsCartActionInProgress(false);
     }
   };
 
   const handleFreeRegistration = async (event: Event) => {
     if (!user) return;
 
-    console.log('Attempting free registration for event:', event.eventName);
-    console.log('User ID:', user.id);
-    console.log('Event ID:', event.id);
-
     try {
-      const response = await fetch('http://localhost:5001/registrations/simple', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          userEmail: user.email,
-          eventId: event.id,
-          userName: user.name, // Assuming user.name exists
-          email: user.email,   // Assuming user.email exists
-          college: user.college, // Assuming user.college exists
-        }),
+      await axios.post('/api/registrations/simple', {
+        userEmail: user.email,
+        eventId: event.id,
+        userName: user.name,
+        email: user.email,
+        college: user.college,
       });
-
-      if (response.ok) {
-        setRegisteredEvents([...registeredEvents, event.id]);
-        setModalContent({
-          title: 'Registration Successful',
-          message: `You have successfully registered for ${event.eventName}.`,
-        });
-        setIsModalOpen(true);
-      } else {
-        const data = await response.json();
-        setModalContent({
-          title: 'Registration Failed',
-          message: data.message || 'An error occurred during registration.',
-        });
-        setIsModalOpen(true);
-      }
-    } catch (error) {
-      console.error('Free registration failed:', error);
-      setModalContent({
-        title: 'Registration Failed',
-        message: 'An unexpected error occurred. Please try again.',
-      });
+      setRegisteredEvents([...registeredEvents, event.id]);
+      setModalContent({ title: 'Registration Successful', message: `You have successfully registered for ${event.eventName}.` });
+      setIsModalOpen(true);
+    } catch (error: any) {
+      setModalContent({ title: 'Registration Failed', message: error.response?.data?.message || 'An error occurred during registration.' });
       setIsModalOpen(true);
     }
   };
@@ -358,13 +255,11 @@ const EventsPage: React.FC = () => {
       className="relative min-h-screen font-sans text-gray-200 overflow-x-hidden" 
       style={{ fontFamily: "'Poppins', sans-serif" }}
     >
-      {/* Background Image Layer */}
       <div
         className="absolute inset-0 bg-cover bg-center bg-fixed"
         style={{ backgroundImage: `url(${backgroundImage})` }}
       ></div>
 
-      {/* Overlay Layer */}
       <div className="absolute inset-0 bg-black/70 z-0"></div>
 
       <Header
@@ -379,6 +274,7 @@ const EventsPage: React.FC = () => {
           <h2 className="text-3xl font-bold text-white mb-8 text-center">Events</h2>
 
           <div className="flex justify-center items-center gap-4 mb-8">
+            { (user?.college === MIT_COLLEGE_NAME || !isLoggedIn) &&
             <button
               onClick={() => setActiveSymposium('Enigma')}
               className={`px-6 py-3 font-semibold rounded-lg transition-all duration-300 ${
@@ -389,6 +285,7 @@ const EventsPage: React.FC = () => {
             >
               Enigma
             </button>
+            }
             <button
               onClick={() => setActiveSymposium('Carteblanche')}
               className={`px-6 py-3 font-semibold rounded-lg transition-all duration-300 ${
@@ -441,7 +338,7 @@ const EventsPage: React.FC = () => {
                       {event.posterUrl && (
                         <div className="mb-4">
                           <img
-                            src={`src/backend/${event.posterUrl}`}
+                            src={`/api/${event.posterUrl}`}
                             alt={event.eventName}
                             className="w-full h-48 object-cover rounded-md mx-auto shadow-md"
                           />
@@ -516,23 +413,21 @@ const EventsPage: React.FC = () => {
         onSwitchToLogin={handleSwitchToLogin} 
       />
 
-      {/* Single ThemedModal instance for both event details and general messages */}
       <ThemedModal
         isOpen={isModalOpen}
         onClose={() => {
           setIsModalOpen(false);
-          setSelectedEvent(null); // Clear selected event when modal closes
-          setModalContent({ title: '', message: '' }); // Clear modal content
+          setSelectedEvent(null);
+          setModalContent({ title: '', message: '' });
         }}
         title={selectedEvent ? selectedEvent.eventName : modalContent.title}
       >
         {selectedEvent ? (
-          // Content for event details
           <div className="text-left max-h-[70vh] overflow-y-auto pr-2 p-4 bg-gray-700/30 rounded-lg shadow-inner">
             {selectedEvent.posterUrl && (
               <div className="mb-6">
                 <img
-                  src={`src/backend/${selectedEvent.posterUrl}`}
+                  src={`/api/${selectedEvent.posterUrl}`}
                   alt={selectedEvent.eventName}
                   className="w-full max-h-80 object-contain rounded-lg shadow-md mx-auto"
                 />
@@ -588,7 +483,6 @@ const EventsPage: React.FC = () => {
             )}
           </div>
         ) : (
-          // Content for general messages
           <p className="text-gray-300 mb-6">{modalContent.message}</p>
         )}
       </ThemedModal>
@@ -598,13 +492,11 @@ const EventsPage: React.FC = () => {
           isOpen={isWorkshopModalOpen}
           onClose={() => setIsWorkshopModalOpen(false)}
           event={selectedWorkshopEvent}
-          isRegistered={registeredEvents.includes(selectedWorkshopEvent.id)} // Pass isRegistered prop
+          isRegistered={registeredEvents.includes(selectedWorkshopEvent.id)}
         />
       )}
     </div>
   );
-
-  
 };
 
 export default EventsPage;

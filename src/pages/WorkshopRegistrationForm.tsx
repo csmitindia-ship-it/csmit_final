@@ -154,8 +154,9 @@ const WorkshopRegistrationForm: React.FC<WorkshopRegistrationFormProps> = ({ use
               </div>
               {qrCodeUrl && (
                 <div className="mt-4">
-                  <h4 className="text-lg font-semibold text-purple-300 mb-2">QR Code</h4>
-                  <iframe src={qrCodeUrl} width="100%" height="500px" title="QR Code"></iframe>
+                  <a href={qrCodeUrl} target="_blank" rel="noopener noreferrer" className="text-purple-400 hover:underline">
+                    View QR Code PDF
+                  </a>
                 </div>
               )}
 

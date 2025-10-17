@@ -139,8 +139,9 @@ const GeneralRegistrationForm: React.FC<GeneralRegistrationFormProps> = ({ event
           </div>
           {qrCodeUrl && (
             <div className="mt-4">
-              <h4 className="text-lg font-semibold mb-2">Scan QR Code to Pay</h4>
-              <iframe src={qrCodeUrl} width="100%" height="500px" title="QR Code"></iframe>
+                <a href={qrCodeUrl} target="_blank" rel="noopener noreferrer" className="text-purple-400 hover:underline">
+                    View QR Code PDF
+                </a>
             </div>
           )}
           <p className="text-gray-300 mt-4 text-sm italic">Please make the payment to the above account and enter the transaction details below.</p>
