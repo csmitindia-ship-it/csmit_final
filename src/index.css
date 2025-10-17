@@ -1,0 +1,30 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap'); /* Added Poppins import */
+
+/* These @tailwind directives must be processed by Tailwind CSS via PostCSS or the Tailwind CLI. 
+   Do not import this file directly as plain CSS in your HTML or JS. 
+   Instead, ensure your build pipeline uses Tailwind to compile this file. */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Terminal vibe cursor */
+@keyframes blink {
+  0%, 50% { opacity: 1; }
+  50.01%, 100% { opacity: 0; }
+}
+@keyframes marquee {
+  0% { transform: translateX(0%); }
+  100% { transform: translateX(-100%); }
+}
+@keyframes progress {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+.animate-marquee {
+  animation: marquee 20s linear infinite;
+}
+
+.animate-pulse {
+  animation: blink 1s step-start infinite;
+}
