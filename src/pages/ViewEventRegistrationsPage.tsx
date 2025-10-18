@@ -3,7 +3,7 @@ import { useParams, useSearchParams } from 'react-router-dom'; // Added useSearc
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import Loader from '../components/Loader';
-import API_BASE_URL from './Config'; // adjust path if needed
+import API_BASE_URL from '../Config'; // adjust path if needed
 
 interface Registration {
   userName: string;

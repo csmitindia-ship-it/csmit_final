@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import API_BASE_URL from './Config'; // adjust path if needed
+import API_BASE_URL from '../Config'; // adjust path if needed
 
 const TimerControl: React.FC = () => {
   const [endTime, setEndTime] = useState('');

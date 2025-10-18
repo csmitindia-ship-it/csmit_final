@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Loader from '../components/Loader';
 import ThemedModal from '../components/ThemedModal';
-import API_BASE_URL from './Config'; // adjust path if needed
+import API_BASE_URL from '../Config'; // adjust path if needed
 
 interface Round {
   roundNumber: number;

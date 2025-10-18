@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import ThemedModal from '../components/ThemedModal'; // Import ThemedModal
-import API_BASE_URL from './Config'; // adjust path if needed
+import API_BASE_URL from '../Config'; // adjust path if needed
 
 interface ExperienceFormProps {
   onClose: () => void;

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import ThemedModal from '../components/ThemedModal';
 import Loader from '../components/Loader';
-import API_BASE_URL from './Config'; // adjust path if needed
+import API_BASE_URL from '../Config'; // adjust path if needed
 
 interface Experience {
   id: number;

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import API_BASE_URL from './Config'; // adjust path if needed
+import API_BASE_URL from '../Config'; // adjust path if needed
 
 interface SignUpPageProps {
   isOpen: boolean;

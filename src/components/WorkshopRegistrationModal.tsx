@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import ThemedModal from './ThemedModal';
 import { useAuth } from '../context/AuthContext'; // Corrected import
-import API_BASE_URL from './Config'; // adjust path if needed
+import API_BASE_URL from '../Config'; // adjust path if needed
 
 interface WorkshopRegistrationModalProps {
   isOpen: boolean;

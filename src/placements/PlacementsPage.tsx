@@ -6,7 +6,7 @@ import LoginPage from '../Login_Sign/LoginPage';
 import SignUpPage from '../Login_Sign/SignUpPage';
 import ForgotPassword from '../Login_Sign/Forgot_Pass';
 import Loader from '../components/Loader'; // Import Loader component
-import API_BASE_URL from './Config'; // adjust path if needed
+import API_BASE_URL from '../Config'; // adjust path if needed
 
 interface Experience {
   id: number;
