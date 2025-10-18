@@ -64,9 +64,11 @@ const db = mysql.createPool(dbConfig);
 
 async function connectToDatabase() {
   try {
+    console.log("Attempting to connect to the database and create tables...");
     await createTablesIfNotExists();
+    console.log("Database connection and table creation process completed successfully.");
   } catch (error) {
-    console.error('Error connecting to MySQL database:', error);
+    console.error('Error connecting to MySQL database or creating tables:', error);
     process.exit(1); // Exit the process if connection fails
   }
 }

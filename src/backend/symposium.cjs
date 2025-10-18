@@ -60,8 +60,11 @@ module.exports = function (db) {
 
   // Get symposium status
   router.get('/status', async (req, res) => {
+    console.log("Received request for /symposium/status");
     try {
+      console.log("Executing query: SELECT * FROM symposium_status");
       const [rows] = await db.execute('SELECT * FROM symposium_status');
+      console.log("Query successful, sending response.");
       res
         .status(200)
         .json(themedResponse(true, "Symposium Status", "Fetched successfully.", { data: rows }));
