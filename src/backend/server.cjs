@@ -313,6 +313,7 @@ async function createTablesIfNotExists() {
     await db.execute(createRegistrationTimerTableQuery);
 
   } catch (error) {
+    console.error("Error during table creation:", error);
     process.exit(1);
   }
 }
