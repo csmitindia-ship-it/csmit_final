@@ -10,23 +10,32 @@ const path = require('path');
 const fs = require('fs');
 
 const app = express();
-app.use(bodyParser.json({ limit: '50mb' }));
-app.use(bodyParser.urlencoded({ extended: true, limit: '50mb' }));
+
+// --- Middleware for logging ---
+app.use((req, res, next) => {
+    console.log(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl}`);
+    next();
+});
+
+// --- JSON Body Parsing ---
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+
+// --- CORS ---
 app.use(cors({
-  origin: ['http://localhost:5173'],
+  origin: ['http://localhost:5173', 'https://csmit.mitindia.edu'],
   methods: ['GET', 'POST', 'DELETE', 'UPDATE', 'PUT', 'PATCH']
 }));
 
+// --- /api Prefix Handling ---
 app.use((req, res, next) => {
-  if (req.url.startsWith('/api')) {
-    req.url = req.url.replace('/api', '');
-  }
-  next();
+    if (req.url.startsWith('/api')) {
+        req.url = req.url.replace('/api', '');
+    }
+    next();
 });
 
 // --- File Upload Setup ---
-
-
 const eventPosterDir = path.join(__dirname, 'uploads/event_posters');
 if (!fs.existsSync(eventPosterDir)){
     fs.mkdirSync(eventPosterDir, { recursive: true });
@@ -52,8 +61,8 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 // --- Database Connection ---
 const dbConfig = {
   host: 'localhost',
-  user: 'root',
-  password: 'password',
+  user: 'backend_user',
+  password: 'Backend@123!',
   database: 'csmit_db',
   waitForConnections: true,
   connectionLimit: 10,
@@ -64,48 +73,51 @@ const db = mysql.createPool(dbConfig);
 
 async function connectToDatabase() {
   try {
-    console.log("Attempting to connect to the database and create tables...");
+    console.log("Connecting to database...");
     await createTablesIfNotExists();
-    console.log("Database connection and table creation process completed successfully.");
+    console.log("Database ready.");
   } catch (error) {
-    console.error('Error connecting to MySQL database or creating tables:', error);
-    process.exit(1); // Exit the process if connection fails
+    console.error('DB connection/table creation failed:', error);
+    process.exit(1);
   }
 }
 
 async function createTablesIfNotExists() {
-  const createUserTableQuery = `
-    CREATE TABLE IF NOT EXISTS users (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      fullName VARCHAR(255) NOT NULL,
-      email VARCHAR(255) NOT NULL UNIQUE,
-      password VARCHAR(255) NOT NULL,
-      dob DATE,
-      mobile VARCHAR(20),
-      college VARCHAR(255),
-      department VARCHAR(255),
-      yearOfPassing INT,
-      state VARCHAR(255),
-      district VARCHAR(255),
-      createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    );
-  `;
-  const createExperienceTableQuery = `
-    CREATE TABLE IF NOT EXISTS experiences (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      name VARCHAR(255) NOT NULL,
-      email VARCHAR(255) NOT NULL,
-      type ENUM('Placement', 'Intern') NOT NULL,
-      year_of_passing INT NOT NULL,
-      company VARCHAR(255) NOT NULL,
-      linkedin_url VARCHAR(255),
-      pdf_file LONGBLOB NOT NULL,
-      status ENUM('pending', 'approved', 'rejected') DEFAULT 'pending',
-      createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    );
-  `;
-  const createEnigmaEventsTableQuery = `
-    CREATE TABLE IF NOT EXISTS enigma_events (
+  try {
+    const createUserTableQuery = `
+      CREATE TABLE IF NOT EXISTS users (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        fullName VARCHAR(255) NOT NULL,
+        email VARCHAR(255) NOT NULL UNIQUE,
+        password VARCHAR(255) NOT NULL,
+        dob DATE,
+        mobile VARCHAR(20),
+        college VARCHAR(255),
+        department VARCHAR(255),
+        yearOfPassing INT,
+        state VARCHAR(255),
+        district VARCHAR(255),
+        createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `;
+
+    const createExperienceTableQuery = `
+      CREATE TABLE IF NOT EXISTS experiences (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        email VARCHAR(255) NOT NULL,
+        type ENUM('Placement', 'Intern') NOT NULL,
+        year_of_passing INT NOT NULL,
+        company VARCHAR(255) NOT NULL,
+        linkedin_url VARCHAR(255),
+        pdf_file LONGBLOB NOT NULL,
+        status ENUM('pending', 'approved', 'rejected') DEFAULT 'pending',
+        createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `;
+
+    const createEnigmaEventsTableQuery = `
+      CREATE TABLE IF NOT EXISTS enigma_events (
         id INT AUTO_INCREMENT PRIMARY KEY,
         eventName VARCHAR(255) NOT NULL,
         eventCategory VARCHAR(255) NOT NULL,
@@ -120,10 +132,11 @@ async function createTablesIfNotExists() {
         lastDateForRegistration DATETIME NOT NULL,
         posterImage LONGBLOB,
         createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    );
-  `;
-  const createCarteBlancheEventsTableQuery = `
-    CREATE TABLE IF NOT EXISTS carte_blanche_events (
+      );
+    `;
+
+    const createCarteBlancheEventsTableQuery = `
+      CREATE TABLE IF NOT EXISTS carte_blanche_events (
         id INT AUTO_INCREMENT PRIMARY KEY,
         eventName VARCHAR(255) NOT NULL,
         eventCategory VARCHAR(255) NOT NULL,
@@ -138,180 +151,116 @@ async function createTablesIfNotExists() {
         lastDateForRegistration DATETIME NOT NULL,
         posterImage LONGBLOB,
         createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    );
-  `;
-  const createEnigmaRoundsTableQuery = `
-    CREATE TABLE IF NOT EXISTS enigma_rounds (
+      );
+    `;
+
+    const createEnigmaRoundsTableQuery = `
+      CREATE TABLE IF NOT EXISTS enigma_rounds (
         id INT AUTO_INCREMENT PRIMARY KEY,
         eventId INT NOT NULL,
         roundNumber INT NOT NULL,
         roundDetails TEXT NOT NULL,
         roundDateTime DATETIME NOT NULL,
         FOREIGN KEY (eventId) REFERENCES enigma_events(id) ON DELETE CASCADE
-    );
-  `;
-  const createCarteBlancheRoundsTableQuery = `
-    CREATE TABLE IF NOT EXISTS carte_blanche_rounds (
+      );
+    `;
+
+    const createCarteBlancheRoundsTableQuery = `
+      CREATE TABLE IF NOT EXISTS carte_blanche_rounds (
         id INT AUTO_INCREMENT PRIMARY KEY,
         eventId INT NOT NULL,
         roundNumber INT NOT NULL,
         roundDetails TEXT NOT NULL,
         roundDateTime DATETIME NOT NULL,
         FOREIGN KEY (eventId) REFERENCES carte_blanche_events(id) ON DELETE CASCADE
-    );
-  `;
+      );
+    `;
 
-  const createAccountsTableQuery = `
-    CREATE TABLE IF NOT EXISTS accounts (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      accountName VARCHAR(255) NOT NULL,
-      bankName VARCHAR(255) NOT NULL,
-      accountNumber VARCHAR(255) NOT NULL,
-      ifscCode VARCHAR(255) NOT NULL,
-      qrCodePdf BLOB,
-      createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    );
-  `;
+    const createAccountsTableQuery = `
+      CREATE TABLE IF NOT EXISTS accounts (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        accountName VARCHAR(255) NOT NULL,
+        bankName VARCHAR(255) NOT NULL,
+        accountNumber VARCHAR(255) NOT NULL,
+        ifscCode VARCHAR(255) NOT NULL,
+        qrCodePdf BLOB,
+        createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `;
 
-  const createEventAccountsTableQuery = `
-    CREATE TABLE IF NOT EXISTS event_accounts (
-      eventId INT NOT NULL,
-      accountId INT NOT NULL,
-      PRIMARY KEY (eventId, accountId),
-      FOREIGN KEY (accountId) REFERENCES accounts(id) ON DELETE CASCADE
-    );
-  `;
+    const createEventAccountsTableQuery = `
+      CREATE TABLE IF NOT EXISTS event_accounts (
+        eventId INT NOT NULL,
+        accountId INT NOT NULL,
+        PRIMARY KEY (eventId, accountId),
+        FOREIGN KEY (accountId) REFERENCES accounts(id) ON DELETE CASCADE
+      );
+    `;
 
-  const createRegistrationsTableQuery = `
-    CREATE TABLE IF NOT EXISTS registrations (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      symposium VARCHAR(255) NOT NULL,
-      eventId INT NOT NULL,
-      userName VARCHAR(255) NOT NULL,
-      userEmail VARCHAR(255) NOT NULL,
-      mobileNumber VARCHAR(20),
-      transactionId VARCHAR(255),
-      transactionUsername VARCHAR(255),
-      transactionTime VARCHAR(255),
-      transactionDate VARCHAR(255),
-      transactionAmount DECIMAL(10, 2),
-      transactionScreenshot MEDIUMBLOB,
-      createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    );
-  `;
+    const createRegistrationsTableQuery = `
+      CREATE TABLE IF NOT EXISTS registrations (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        symposium VARCHAR(255) NOT NULL,
+        eventId INT NOT NULL,
+        userName VARCHAR(255) NOT NULL,
+        userEmail VARCHAR(255) NOT NULL,
+        mobileNumber VARCHAR(20),
+        transactionId VARCHAR(255),
+        transactionUsername VARCHAR(255),
+        transactionTime VARCHAR(255),
+        transactionDate VARCHAR(255),
+        transactionAmount DECIMAL(10, 2),
+        transactionScreenshot MEDIUMBLOB,
+        createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `;
 
-  const createEnigmaNonWorkshopRegistrationsTableQuery = `
-    CREATE TABLE IF NOT EXISTS enigma_non_workshop_registrations (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      userEmail VARCHAR(255) NOT NULL,
-      eventId INT NOT NULL,
-      createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    );
-  `;
+    const createEnigmaNonWorkshopRegistrationsTableQuery = `
+      CREATE TABLE IF NOT EXISTS enigma_non_workshop_registrations (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        userEmail VARCHAR(255) NOT NULL,
+        eventId INT NOT NULL,
+        createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `;
 
-  const createCartTableQuery = `
-    CREATE TABLE IF NOT EXISTS cart (
-      cartId INT AUTO_INCREMENT PRIMARY KEY,
-      userId INT NOT NULL,
-      eventId INT NOT NULL,
-      symposiumName VARCHAR(255) NOT NULL,
-      createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
-    );
-  `;
+    const createCartTableQuery = `
+      CREATE TABLE IF NOT EXISTS cart (
+        cartId INT AUTO_INCREMENT PRIMARY KEY,
+        userId INT NOT NULL,
+        eventId INT NOT NULL,
+        symposiumName VARCHAR(255) NOT NULL,
+        createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
+      );
+    `;
 
-  const createVerifiedRegistrationsTableQuery = `
-    CREATE TABLE IF NOT EXISTS verified_registrations (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      userId INT NOT NULL,
-      eventId INT NOT NULL,
-      verified BOOLEAN NOT NULL,
-      createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
-    );
-  `;
+    const createVerifiedRegistrationsTableQuery = `
+      CREATE TABLE IF NOT EXISTS verified_registrations (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        userId INT NOT NULL,
+        eventId INT NOT NULL,
+        verified BOOLEAN NOT NULL,
+        createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
+      );
+    `;
 
-  try {
+    // Execute table creation queries
     await db.execute(createUserTableQuery);
     await db.execute(createExperienceTableQuery);
-    await db.execute('DROP TABLE IF EXISTS events;');
     await db.execute(createEnigmaEventsTableQuery);
     await db.execute(createCarteBlancheEventsTableQuery);
     await db.execute(createEnigmaRoundsTableQuery);
     await db.execute(createCarteBlancheRoundsTableQuery);
     await db.execute(createAccountsTableQuery);
     await db.execute(createEventAccountsTableQuery);
-    
     await db.execute(createRegistrationsTableQuery);
     await db.execute(createEnigmaNonWorkshopRegistrationsTableQuery);
     await db.execute(createCartTableQuery);
     await db.execute(createVerifiedRegistrationsTableQuery);
 
-    const createOrganizersTableQuery = `
-      CREATE TABLE IF NOT EXISTS organizers (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        name VARCHAR(255) NOT NULL,
-        email VARCHAR(255) NOT NULL UNIQUE,
-        mobile VARCHAR(20) NOT NULL,
-        password VARCHAR(255) NOT NULL,
-        createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
-    `;
-    await db.execute(createOrganizersTableQuery);
-
-    const createRoundWinnersTableQuery = `
-      CREATE TABLE IF NOT EXISTS round_winners (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        eventId INT NOT NULL,
-        roundNumber INT NOT NULL,
-        userId INT NOT NULL,
-        status VARCHAR(255) NOT NULL DEFAULT 'eligible',
-        createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
-      );
-    `;
-    await db.execute(createRoundWinnersTableQuery);
-
-    const createSymposiumStatusTableQuery = `
-      CREATE TABLE IF NOT EXISTS symposium_status (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        symposiumName VARCHAR(255) NOT NULL UNIQUE,
-        isOpen BOOLEAN DEFAULT FALSE,
-        startDate DATE,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-      );
-    `;
-    await db.execute(createSymposiumStatusTableQuery);
-
-    // Check if startDate column exists and add it if it doesn't
-    const [columns] = await db.execute(`
-      SELECT COLUMN_NAME 
-      FROM INFORMATION_SCHEMA.COLUMNS 
-      WHERE TABLE_SCHEMA = 'csmit_db' 
-      AND TABLE_NAME = 'symposium_status' 
-      AND COLUMN_NAME = 'startDate'
-    `);
-
-    if (columns.length === 0) {
-      await db.execute('ALTER TABLE symposium_status ADD COLUMN startDate DATE');
-    }
-
-    const symposiums = ['Enigma', 'Carteblanche'];
-
-    for (const symposium of symposiums) {
-      await db.execute('INSERT IGNORE INTO symposium_status (symposiumName) VALUES (?)', [symposium]);
-    }
-
-    const createRegistrationTimerTableQuery = `
-      CREATE TABLE IF NOT EXISTS registration_timer (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        end_time DATETIME NOT NULL,
-        is_active BOOLEAN NOT NULL DEFAULT TRUE,
-        createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
-    `;
-    await db.execute(createRegistrationTimerTableQuery);
-
+    console.log("All tables created successfully.");
   } catch (error) {
     console.error("Error during table creation:", error);
     process.exit(1);
@@ -327,6 +276,7 @@ const transporter = nodemailer.createTransport({
   },
 });
 
+// --- Start Server and Routers ---
 async function startServer() {
   await connectToDatabase();
 
@@ -353,14 +303,20 @@ async function startServer() {
   app.use('/organizers', organizerRouter);
   app.use('/timer', timerRouter);
 
-  // --- Start Server ---
-  app.use((req, res, next) => {
+  // --- Test API ---
+  app.get('/test', (req, res) => {
+    res.json({ message: "API is working with database connection!" });
+  });
+
+  // --- 404 Handler ---
+  app.use((req, res) => {
     res.status(404).json({ message: 'Not Found' });
   });
 
-  const PORT = 5001;
+  // --- Start Listening on Port 8080 ---
+  const PORT = 8080;
   app.listen(PORT, () => {
-    console.log(`Unified server is running on http://localhost:${PORT}`);
+    console.log(`Unified server is running on http://localhost:${PORT}/test`);
   });
 }
 
