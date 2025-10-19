@@ -279,14 +279,16 @@ module.exports = function (db, uploadTransactionScreenshot) {
       const [allRegistrations] = await db.execute(
         `SELECT r.id, r.eventId, r.userEmail, r.round1, r.round2, r.round3, r.symposium 
          FROM registrations r
-         JOIN verified_registrations vr ON r.userEmail = vr.userEmail AND r.eventId = vr.eventId
-         WHERE r.userEmail = ? AND vr.verified = true
+         JOIN users u ON r.userEmail = u.email
+         JOIN verified_registrations vr ON u.id = vr.userId AND r.eventId = vr.eventId
+         WHERE u.id = ? AND vr.verified = true
          UNION
          SELECT enr.id, enr.eventId, enr.userEmail, -1 as round1, -1 as round2, -1 as round3, 'Enigma' as symposium 
          FROM enigma_non_workshop_registrations enr
-         JOIN verified_registrations vr ON enr.userEmail = vr.userEmail AND enr.eventId = vr.eventId
-         WHERE enr.userEmail = ? AND vr.verified = true`,
-        [userEmail, userEmail]
+         JOIN users u ON enr.userEmail = u.email
+         JOIN verified_registrations vr ON u.id = vr.userId AND enr.eventId = vr.eventId
+         WHERE u.id = ? AND vr.verified = true`,
+        [userId, userId]
       );
 
       const registrationsWithEvents = [];
