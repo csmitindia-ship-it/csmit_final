@@ -159,16 +159,9 @@ const EventsPage: React.FC = () => {
   }, [cartItems]);
 
   const filteredEvents = events
-    .filter(event => {
-      if (user && user.college !== MIT_COLLEGE_NAME) {
-        return event.symposiumName === 'Carteblanche';
-      }
-      return true;
-    })
-    .filter(event => event.symposiumName === activeSymposium)
-    .filter(event => activeCategory ? event.eventCategory === activeCategory : true)
-    .sort((a, b) => a.eventCategory.localeCompare(b.eventCategory));
-
+  .filter(event => event.symposiumName === activeSymposium)
+  .filter(event => (activeCategory ? event.eventCategory === activeCategory : true))
+  .sort((a, b) => a.eventCategory.localeCompare(b.eventCategory));
   const handleSwitchToSignUp = () => {
     setIsLoginModalOpen(false);
     setIsSignUpModalOpen(true);

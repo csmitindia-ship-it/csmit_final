@@ -181,8 +181,9 @@ module.exports = function (db, uploadTransactionScreenshot) {
 
       res.status(200).json(allRegistrations);
     } catch (error) {
-      res.status(500).json({ message: 'Failed to fetch event registrations.' });
-    }
+  console.error("Error fetching user registrations:", error);
+  res.status(500).json({ message: "Failed to fetch user registrations." });
+}
   });
 
   router.get('/by-email/:userEmail', async (req, res) => {
