@@ -17,7 +17,7 @@ export default function SignUpPage({ isOpen, onClose, onSwitchToLogin }: SignUpP
     dob: '',
     mobile: '',
     college: '',
-    department: 'CSE',
+    department: '',
     yearOfPassing: new Date().getFullYear(),
     state: 'Tamil Nadu',
     district: ''
@@ -37,7 +37,6 @@ export default function SignUpPage({ isOpen, onClose, onSwitchToLogin }: SignUpP
     "Tamil Nadu", "Telangana", "Tripura", "Uttar Pradesh", "Uttarakhand",
     "West Bengal"
   ];
-  const departments = ["CSE", "IT", "ECE", "EEE", "MECH", "CIVIL", "AUTO"];
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 10 }, (_, i) => currentYear + i - 5);
 
@@ -189,9 +188,7 @@ export default function SignUpPage({ isOpen, onClose, onSwitchToLogin }: SignUpP
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-400 mb-1">Department</label>
-              <select name="department" value={formData.department} onChange={handleChange} className="w-full px-4 py-2 bg-gray-800/60 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500" required>
-                {departments.map(dept => <option key={dept} value={dept}>{dept}</option>)}
-              </select>
+              <input type="text" name="department" value={formData.department} onChange={handleChange} placeholder="Your department" className="w-full px-4 py-2 bg-gray-800/60 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500" required />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-400 mb-1">Year of Passing</label>
