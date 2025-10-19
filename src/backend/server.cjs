@@ -52,8 +52,8 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 // --- Database Connection ---
 const dbConfig = {
   host: 'localhost',
-  user: 'root',
-  password: 'password',
+  user: 'backend_user',
+  password: 'Backend@123!',
   database: 'csmit_db',
   waitForConnections: true,
   connectionLimit: 10,

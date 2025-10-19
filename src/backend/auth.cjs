@@ -125,6 +125,13 @@ module.exports = function(db, transporter) {
 
       if (organizerRows.length > 0) {
         const organizer = organizerRows[0];
+
+        // Defensive check for password existence
+        if (!organizer.password || typeof organizer.password !== 'string') {
+            console.warn(`Login failed: Organizer '${email}' has no valid password in the database.`);
+            return res.status(401).json({ message: 'Invalid credentials.' });
+        }
+
         const isPasswordValid = await bcrypt.compare(password, organizer.password);
 
         if (isPasswordValid) {
@@ -144,6 +151,13 @@ module.exports = function(db, transporter) {
       }
 
       const user = userRows[0];
+
+      // Defensive check for password existence
+      if (!user.password || typeof user.password !== 'string') {
+          console.warn(`Login failed: User '${email}' has no valid password in the database.`);
+          return res.status(401).json({ message: 'Invalid credentials.' });
+      }
+
       const isPasswordValid = await bcrypt.compare(password, user.password);
 
       if (!isPasswordValid) {
