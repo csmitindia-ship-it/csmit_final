@@ -89,7 +89,7 @@ module.exports = function (db, upload) {
       res.setHeader('Content-Type', 'application/pdf');
       res.setHeader(
         'Content-Disposition',
-        `attachment; filename="experience_${id}.pdf"`
+        `inline; filename="experience_${id}.pdf"`
       );
       res.send(rows[0].pdf_file);
     } catch (error) {

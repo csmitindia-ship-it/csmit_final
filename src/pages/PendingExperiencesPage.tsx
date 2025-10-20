@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Loader from '../components/Loader'; // Import Loader component
 import ThemedModal from '../components/ThemedModal'; // Adjust path as needed
+import API_BASE_URL from '../Config';
 
 interface Experience {
   id: number;
@@ -26,7 +27,7 @@ const PendingExperiencesPage: React.FC = () => {
   const fetchExperiences = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch('/api/placements/admin/pending-experiences');
+      const response = await fetch(`${API_BASE_URL}/placements/admin/pending-experiences`);
       if (response.ok) {
         const data = await response.json();
         setPendingExperiences(data);
@@ -46,7 +47,7 @@ const PendingExperiencesPage: React.FC = () => {
   }, []);
 
   const handleStatusUpdate = (id: number, status: 'approved' | 'rejected') => {
-    fetch('/api/placements/admin/update-experience-status', {
+    fetch(`${API_BASE_URL}/placements/admin/update-experience-status`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -75,7 +76,7 @@ const PendingExperiencesPage: React.FC = () => {
     setModalMessage('Are you sure you want to delete this experience?');
     setModalOnConfirm(() => async () => {
       try {
-        const response = await fetch(`/api/placements/admin/delete-experience/${id}`, {
+        const response = await fetch(`${API_BASE_URL}/placements/admin/delete-experience/${id}`, {
           method: 'DELETE',
         });
         const result = await response.json();
@@ -141,6 +142,27 @@ const PendingExperiencesPage: React.FC = () => {
                         className="px-4 py-2 bg-red-600 text-white font-semibold rounded-lg hover:bg-red-700 transition-colors"
                       >
                         Reject
+                      </button>
+                      <button
+                        onClick={() => {
+                          // Open a new window and render the PdfViewer component
+                          const pdfWindow = window.open("", "_blank");
+                          if (pdfWindow) {
+                            pdfWindow.document.write(`
+                              <html>
+                                <head>
+                                  <title>Resume</title>
+                                </head>
+                                <body style="margin: 0;">
+                                  <iframe src="${API_BASE_URL}/placements/experiences/${exp.id}/pdf" width="100%" height="100%" style="border: none;"></iframe>
+                                </body>
+                              </html>
+                            `);
+                          }
+                        }}
+                        className="px-4 py-2 bg-purple-600 text-white font-semibold rounded-lg hover:bg-purple-700 transition-colors"
+                      >
+                        View Resume
                       </button>
                     </div>
                   </div>

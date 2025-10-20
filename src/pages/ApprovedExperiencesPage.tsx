@@ -97,9 +97,27 @@ const ApprovedExperiencesPage: React.FC = () => {
                         <p><strong className="font-semibold text-purple-400">Company:</strong> {exp.company}</p>
                       </div>
                     </div>
-                    <a href={`${API_BASE_URL}/placements/experiences/${exp.id}/pdf`} target="_blank" rel="noopener noreferrer" className="w-full md:w-auto text-center px-4 py-2 bg-purple-600 text-white text-sm font-semibold rounded-lg hover:bg-purple-700 transition-colors">
+                    <button
+                      onClick={() => {
+                        // Open a new window and render the PdfViewer component
+                        const pdfWindow = window.open("", "_blank");
+                        if (pdfWindow) {
+                          pdfWindow.document.write(`
+                            <html>
+                              <head>
+                                <title>Resume</title>
+                              </head>
+                              <body style="margin: 0;">
+                                <iframe src="${API_BASE_URL}/placements/experiences/${exp.id}/pdf" width="100%" height="100%" style="border: none;"></iframe>
+                              </body>
+                            </html>
+                          `);
+                        }
+                      }}
+                      className="w-full md:w-auto text-center px-4 py-2 bg-purple-600 text-white text-sm font-semibold rounded-lg hover:bg-purple-700 transition-colors"
+                    >
                       View Resume
-                    </a>
+                    </button>
                   </div>
                 </div>
               ))
