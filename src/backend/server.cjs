@@ -131,6 +131,7 @@ async function createTablesIfNotExists() {
         coordinatorMail VARCHAR(255) NOT NULL,
         lastDateForRegistration DATETIME NOT NULL,
         posterImage LONGBLOB,
+        open_to_non_mit BOOLEAN DEFAULT TRUE,
         createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `;
@@ -150,6 +151,7 @@ async function createTablesIfNotExists() {
         coordinatorMail VARCHAR(255) NOT NULL,
         lastDateForRegistration DATETIME NOT NULL,
         posterImage LONGBLOB,
+        open_to_non_mit BOOLEAN DEFAULT TRUE,
         createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `;

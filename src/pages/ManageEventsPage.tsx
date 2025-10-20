@@ -233,35 +233,51 @@ const App: React.FC = () => {
 
   const handleSaveEvent = async (e: React.FormEvent) => {
     e.preventDefault();
-    const eventData = editingEvent ? { ...editingEvent, rounds } : { ...newEvent, rounds, symposiumName: activeSymposium };
+    const eventData = editingEvent
+  ? { ...editingEvent, rounds, isOpenForNonMIT: editingEvent.isOpenForNonMIT }
+  : { ...newEvent, rounds, symposiumName: activeSymposium, isOpenForNonMIT: newEvent.isOpenForNonMIT };
+
     const url = editingEvent ? `${API_BASE_URL}/events/${editingEvent.id}` : `${API_BASE_URL}/events`;
     const method = editingEvent ? 'PUT' : 'POST';
 
     try {
-      const response = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(eventData) });
-      if (!response.ok) throw new Error('Failed to save event');
-      fetchEvents();
-      setNewEvent({
-        eventName: '',
-        eventCategory: '',
-        eventDescription: '',
-        numberOfRounds: 1,
-        teamOrIndividual: 'Individual',
-        location: '',
-        registrationFees: 0,
-        coordinatorName: '',
-        coordinatorContactNo: '',
-        coordinatorMail: '',
-        lastDateForRegistration: '',
-        isOpenForNonMIT: false,
-      });
-      setRounds([{ roundNumber: 1, roundDetails: '', roundDateTime: '' }]);
-      setEditingEvent(null);
-      setModalTitle('Success');
-      setModalMessage('Event saved successfully');
-      setShowConfirmButton(false);
-      setIsModalOpen(true);
-    } catch (err) {
+  // Send event data to backend
+  const response = await fetch(url, {
+    method,
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(eventData),
+  });
+
+  if (!response.ok) throw new Error('Failed to save event');
+
+  // Refresh the event list
+  await fetchEvents();
+
+  // ✅ Reset form only if it's a new event (not during edit)
+  if (!editingEvent) {
+    setNewEvent({
+      eventName: '',
+      eventCategory: '',
+      eventDescription: '',
+      numberOfRounds: 1,
+      teamOrIndividual: 'Individual',
+      location: '',
+      registrationFees: 0,
+      coordinatorName: '',
+      coordinatorContactNo: '',
+      coordinatorMail: '',
+      lastDateForRegistration: '',
+      isOpenForNonMIT: false,
+    });
+    setRounds([{ roundNumber: 1, roundDetails: '', roundDateTime: '' }]);
+  } else {
+    setEditingEvent({ ...editingEvent });
+  }
+  setModalTitle('Success');
+  setModalMessage(editingEvent ? 'Event updated successfully!' : 'Event created successfully!');
+  setShowConfirmButton(false);
+  setIsModalOpen(true);
+}  catch (err) {
       console.error(err);
       setModalTitle('Error');
       setModalMessage('Failed to save event.');

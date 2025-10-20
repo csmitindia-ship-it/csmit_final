@@ -18,6 +18,7 @@ module.exports = function(db, uploadEventPoster, transporter) {
       coordinatorContactNo,
       coordinatorMail,
       lastDateForRegistration,
+      isOpenForNonMIT,
       rounds,
     } = req.body;
 
@@ -45,14 +46,15 @@ module.exports = function(db, uploadEventPoster, transporter) {
         `INSERT INTO ${eventTable} (
           eventName, eventCategory, eventDescription, numberOfRounds, teamOrIndividual,
           location, registrationFees, coordinatorName, coordinatorContactNo, coordinatorMail,
-          lastDateForRegistration
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          lastDateForRegistration, open_to_non_mit
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           eventName, eventCategory, eventDescription, numberOfRounds, teamOrIndividual,
           location, registrationFees, coordinatorName, coordinatorContactNo, coordinatorMail,
-          lastDateForRegistration,
+          lastDateForRegistration, isOpenForNonMIT ? 1 : 0,
         ]
       );
+
 
       const eventId = eventResult.insertId;
 
@@ -71,8 +73,8 @@ module.exports = function(db, uploadEventPoster, transporter) {
 
   router.get('/', async (req, res) => {
     try {
-      const [enigmaEvents] = await db.execute('SELECT id, eventName, eventCategory, eventDescription, numberOfRounds, teamOrIndividual, location, registrationFees, coordinatorName, coordinatorContactNo, coordinatorMail, lastDateForRegistration, posterImage, createdAt FROM enigma_events');
-      const [carteBlancheEvents] = await db.execute('SELECT id, eventName, eventCategory, eventDescription, numberOfRounds, teamOrIndividual, location, registrationFees, coordinatorName, coordinatorContactNo, coordinatorMail, lastDateForRegistration, posterImage, createdAt FROM carte_blanche_events');
+      const [enigmaEvents] = await db.execute('SELECT id, eventName, eventCategory, eventDescription, numberOfRounds, teamOrIndividual, location, registrationFees, coordinatorName, coordinatorContactNo, coordinatorMail, lastDateForRegistration, posterImage,open_to_non_mit, createdAt FROM enigma_events');
+      const [carteBlancheEvents] = await db.execute('SELECT id, eventName, eventCategory, eventDescription, numberOfRounds, teamOrIndividual, location, registrationFees, coordinatorName, coordinatorContactNo, coordinatorMail, lastDateForRegistration, posterImage,open_to_non_mit, createdAt FROM carte_blanche_events');
 
       const allEvents = [];
 
@@ -159,6 +161,7 @@ module.exports = function(db, uploadEventPoster, transporter) {
       coordinatorContactNo,
       coordinatorMail,
       lastDateForRegistration,
+      isOpenForNonMIT,
       rounds,
     } = req.body;
 
@@ -186,14 +189,15 @@ module.exports = function(db, uploadEventPoster, transporter) {
         `UPDATE ${eventTable} SET
           eventName = ?, eventCategory = ?, eventDescription = ?, numberOfRounds = ?, teamOrIndividual = ?,
           location = ?, registrationFees = ?, coordinatorName = ?, coordinatorContactNo = ?, coordinatorMail = ?,
-          lastDateForRegistration = ?
+          lastDateForRegistration = ?, open_to_non_mit = ?
         WHERE id = ?`,
         [
           eventName, eventCategory, eventDescription, numberOfRounds, teamOrIndividual,
           location, registrationFees, coordinatorName, coordinatorContactNo, coordinatorMail,
-          lastDateForRegistration, id,
+          lastDateForRegistration, isOpenForNonMIT ? 1 : 0, id,
         ]
       );
+
 
       // Delete existing rounds and insert new ones
       await db.execute(`DELETE FROM ${roundsTable} WHERE eventId = ?`, [id]);

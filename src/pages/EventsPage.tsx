@@ -34,6 +34,7 @@ interface Event {
   rounds?: Round[];
   posterUrl?: string; 
   registrationLink?: string;
+  open_to_non_mit?: boolean | number;
 }
 
 const EventsPage: React.FC = () => {
@@ -161,7 +162,18 @@ const EventsPage: React.FC = () => {
   const filteredEvents = events
   .filter(event => event.symposiumName === activeSymposium)
   .filter(event => (activeCategory ? event.eventCategory === activeCategory : true))
+  .filter(event => {
+    if (!user) {
+      return true;
+    }
+    if (user.college === MIT_COLLEGE_NAME) {
+      return true;
+    }
+    return event.open_to_non_mit === true || event.open_to_non_mit === 1;
+  })
   .sort((a, b) => a.eventCategory.localeCompare(b.eventCategory));
+
+
   const handleSwitchToSignUp = () => {
     setIsLoginModalOpen(false);
     setIsSignUpModalOpen(true);
