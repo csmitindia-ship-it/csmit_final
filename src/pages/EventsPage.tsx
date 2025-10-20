@@ -267,29 +267,28 @@ const EventsPage: React.FC = () => {
           <h2 className="text-3xl font-bold text-white mb-8 text-center">Events</h2>
 
           <div className="flex justify-center items-center gap-4 mb-8">
-            { (user?.college === MIT_COLLEGE_NAME || !isLoggedIn) &&
-            <button
-              onClick={() => setActiveSymposium('Enigma')}
-              className={`px-6 py-3 font-semibold rounded-lg transition-all duration-300 ${
-                activeSymposium === 'Enigma'
-                  ? 'bg-purple-600 text-white scale-105 shadow-lg'
-                  : 'bg-gray-800/60 text-gray-300 hover:bg-purple-500/50'
-              }`}
-            >
-              Enigma
-            </button>
-            }
-            <button
-              onClick={() => setActiveSymposium('Carteblanche')}
-              className={`px-6 py-3 font-semibold rounded-lg transition-all duration-300 ${
-                activeSymposium === 'Carteblanche'
-                  ? 'bg-purple-600 text-white scale-105 shadow-lg'
-                  : 'bg-gray-800/60 text-gray-300 hover:bg-purple-500/50'
-              }`}
-            >
-              Carteblanche
-            </button>
-          </div>
+  <button
+    onClick={() => setActiveSymposium('Enigma')}
+    className={`px-6 py-3 font-semibold rounded-lg transition-all duration-300 ${
+      activeSymposium === 'Enigma'
+        ? 'bg-purple-600 text-white scale-105 shadow-lg'
+        : 'bg-gray-800/60 text-gray-300 hover:bg-purple-500/50'
+    }`}
+  >
+    Enigma
+  </button>
+
+  <button
+    onClick={() => setActiveSymposium('Carteblanche')}
+    className={`px-6 py-3 font-semibold rounded-lg transition-all duration-300 ${
+      activeSymposium === 'Carteblanche'
+        ? 'bg-purple-600 text-white scale-105 shadow-lg'
+        : 'bg-gray-800/60 text-gray-300 hover:bg-purple-500/50'
+    }`}
+  >
+    Carteblanche
+  </button>
+</div>
 
           {eventCategories.length > 0 && (
             <div className="flex flex-wrap justify-center border-b border-gray-700 mb-8">

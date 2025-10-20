@@ -63,34 +63,52 @@ export default function SignUpPage({ isOpen, onClose, onSwitchToLogin }: SignUpP
   const MIT_COLLEGE_NAME = "Madras Institute of Technology";
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    setSuccess('');
-    setIsLoading(true);
+  e.preventDefault();
+  setError('');
+  setSuccess('');
 
-    try {
-      const response = await fetch(`${API_BASE_URL}/auth/signup`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
-      });
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(formData.email)) {
+    setError('Please enter a valid email address.');
+    return;
+  }
 
-      const data = await response.json();
+  if (formData.password.length < 6) {
+    setError('Password must be at least 6 characters long.');
+    return;
+  }
 
-      if (response.ok) {
-        setSuccess('Signed up successfully!');
-        setTimeout(() => {
-          onSwitchToLogin();
-        }, 2000);
-      } else {
-        setError(data.message || 'Failed to create account.');
-      }
-    } catch (err) {
-      setError('An error occurred. Please try again.');
+  if (!/^\d{10}$/.test(formData.mobile)) {
+    setError('Please enter a valid 10-digit mobile number.');
+    return;
+  }
+
+  setIsLoading(true);
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/auth/signup`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(formData)
+    });
+
+    const data = await response.json();
+
+    if (response.ok) {
+      setSuccess('Signed up successfully!');
+      setTimeout(() => {
+        onSwitchToLogin();
+      }, 2000);
+    } else {
+      setError(data.message || 'Failed to create account.');
     }
-    setIsLoading(false);
-  };
+  } catch (err) {
+    setError('An error occurred. Please try again.');
+  }
+  setIsLoading(false);
+};
 
+   
   return (
     <div
       className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
@@ -124,7 +142,7 @@ export default function SignUpPage({ isOpen, onClose, onSwitchToLogin }: SignUpP
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-400 mb-1">Email Address</label>
-            <input type="email" name="email" value={formData.email} onChange={handleChange} placeholder="you@mit.edu" className="w-full px-4 py-2 bg-gray-800/60 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500" required />
+            <input type="email" name="email" value={formData.email} onChange={handleChange} placeholder="you@gmail.com" className="w-full px-4 py-2 bg-gray-800/60 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500" required />
           </div>
           <div className="relative">
             <label className="block text-sm font-medium text-gray-400 mb-1">Password</label>
