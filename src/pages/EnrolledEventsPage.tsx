@@ -78,12 +78,11 @@ const EnrolledEventsPage: React.FC = () => {
   const getStatusText = (status: any, roundDate: Date) => {
     const now = new Date();
     const statusNum = Number(status);
+    if (statusNum === 0) return <span className="text-red-400">Not selected for next round</span>;
+    if (statusNum === 1) return <span className="text-green-400">Selected</span>;
     if (roundDate > now) {
       return <span className="text-gray-400">Yet to happen</span>;
     }
-    if (statusNum === 0) return <span className="text-red-400">Not selected for next round</span>;
-    if (statusNum === 1) return <span className="text-green-400">Selected</span>;
-    
     return <span className="text-yellow-400">Not attended the event</span>;
   };
 
