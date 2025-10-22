@@ -76,31 +76,16 @@ const EnrolledEventsPage: React.FC = () => {
   }, [isLoggedIn, user]);
 
   const getStatusText = (status: any, roundDate: Date) => {
-  const now = new Date();
-
-  // handle null or undefined
-  if (status === null || status === undefined || Number(status) === -1) {
-    return roundDate > now
-      ? <span className="text-gray-400">Yet to happen</span>
-      : <span className="text-yellow-400">Not attended the event</span>;
-  }
-
-  const statusNum = Number(status);
-
-  if (statusNum === 1) {
-    return <span className="text-green-400">Selected</span>;
-  }
-
-  // Only show rejection message after the round date
-  if (statusNum === 0) {
-    return roundDate > now
-      ? <span className="text-gray-400">Yet to happen</span>
-      : <span className="text-red-400">Not selected for next round</span>;
-  }
-
-  // fallback (shouldn’t happen)
-  return <span className="text-gray-400">Yet to happen</span>;
-};
+    const now = new Date();
+    const statusNum = Number(status);
+    if (roundDate > now) {
+      return <span className="text-gray-400">Yet to happen</span>;
+    }
+    if (statusNum === 0) return <span className="text-red-400">Not selected for next round</span>;
+    if (statusNum === 1) return <span className="text-green-400">Selected</span>;
+    
+    return <span className="text-yellow-400">Not attended the event</span>;
+  };
 
   if (isLoading || authLoading) {
     return <Loader />;

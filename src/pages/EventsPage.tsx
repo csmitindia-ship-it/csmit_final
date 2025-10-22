@@ -340,13 +340,14 @@ const EventsPage: React.FC = () => {
 
                     <div className="relative z-10 p-6 flex flex-col h-full">
                       {event.posterUrl && (
-                          <div className="mb-4 relative w-full" style={{ aspectRatio: '4 / 5' }}>
+                          <div className="mb-4 w-full bg-black/40 rounded-md shadow-md flex justify-center items-center overflow-hidden" style={{ aspectRatio: '4 / 5' }}>
                             <img
                               src={`/api/${event.posterUrl}`}
                               alt={event.eventName}
-                              className="absolute inset-0 w-full h-full object-cover rounded-md mx-auto shadow-md"
+                              className="w-full h-full object-contain"
                             />
                           </div>
+
                         )}
 
 
@@ -430,13 +431,14 @@ const EventsPage: React.FC = () => {
         {selectedEvent ? (
           <div className="text-left max-h-[70vh] overflow-y-auto pr-2 p-4 bg-gray-700/30 rounded-lg shadow-inner">
             {selectedEvent.posterUrl && (
-                <div className="mb-6 relative w-full max-w-md mx-auto" style={{ aspectRatio: '4 / 5' }}>
+                <div className="mb-6 w-full max-w-md mx-auto bg-black/40 rounded-lg shadow-md flex justify-center items-center overflow-hidden" style={{ aspectRatio: '4 / 5' }}>
                   <img
                     src={`/api/${selectedEvent.posterUrl}`}
                     alt={selectedEvent.eventName}
-                    className="absolute inset-0 w-full h-full object-cover rounded-lg shadow-md"
+                    className="w-full h-full object-contain"
                   />
                 </div>
+
               )}
 
 
