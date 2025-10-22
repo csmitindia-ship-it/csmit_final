@@ -146,44 +146,26 @@ module.exports = function (db, uploadTransactionScreenshot) {
   router.get('/event/:eventId', async (req, res) => {
     const { eventId } = req.params;
     try {
-      const [workshopRegistrations] = await db.execute(
+      const [registrations] = await db.execute(
         `SELECT r.transactionId, r.transactionUsername, r.transactionTime, r.transactionDate, r.transactionAmount, 
                 u.fullName as userName, u.email, u.college 
          FROM registrations r 
          JOIN users u ON r.userEmail = u.email 
-         JOIN verified_registrations vr ON u.id = vr.userId AND r.eventId = vr.eventId
-         WHERE r.eventId = ? AND vr.verified = true`,
+         WHERE r.eventId = ?`,
         [eventId]
       );
 
-      const [nonWorkshopRegistrations] = await db.execute(
-        `SELECT u.fullName as userName, u.email, u.college, 
-                NULL as transactionId, NULL as transactionUsername, NULL as transactionTime, NULL as transactionDate, NULL as transactionAmount 
-         FROM enigma_non_workshop_registrations enr 
-         JOIN users u ON enr.userEmail = u.email 
-         JOIN verified_registrations vr ON u.id = vr.userId AND enr.eventId = vr.eventId
-         WHERE enr.eventId = ? AND vr.verified = true`,
-        [eventId]
-      );
-
-      const allRegistrations = [
-        ...workshopRegistrations.map((reg) => ({
-          ...reg,
-          email: reg.email || 'N/A',
-          college: reg.college || 'N/A',
-        })),
-        ...nonWorkshopRegistrations.map((reg) => ({
-          ...reg,
-          email: reg.email || 'N/A',
-          college: reg.college || 'N/A',
-        })),
-      ];
+      const allRegistrations = registrations.map((reg) => ({
+        ...reg,
+        email: reg.email || 'N/A',
+        college: reg.college || 'N/A',
+      }));
 
       res.status(200).json(allRegistrations);
     } catch (error) {
-  console.error("Error fetching user registrations:", error);
-  res.status(500).json({ message: "Failed to fetch user registrations." });
-}
+      console.error("Error fetching user registrations:", error);
+      res.status(500).json({ message: "Failed to fetch user registrations." });
+    }
   });
 
   router.get('/by-email/:userEmail', async (req, res) => {
@@ -296,15 +278,8 @@ module.exports = function (db, uploadTransactionScreenshot) {
         `SELECT r.id, r.eventId, r.userEmail, r.round1, r.round2, r.round3, r.symposium 
          FROM registrations r
          JOIN users u ON r.userEmail = u.email
-         JOIN verified_registrations vr ON u.id = vr.userId AND r.eventId = vr.eventId
-         WHERE u.id = ? AND vr.verified = true
-         UNION
-         SELECT enr.id, enr.eventId, enr.userEmail, -1 as round1, -1 as round2, -1 as round3, 'Enigma' as symposium 
-         FROM enigma_non_workshop_registrations enr
-         JOIN users u ON enr.userEmail = u.email
-         JOIN verified_registrations vr ON u.id = vr.userId AND enr.eventId = vr.eventId
-         WHERE u.id = ? AND vr.verified = true`,
-        [userId, userId]
+         WHERE u.id = ?`,
+        [userId]
       );
 
       const registrationsWithEvents = [];

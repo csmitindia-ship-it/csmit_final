@@ -340,14 +340,15 @@ const EventsPage: React.FC = () => {
 
                     <div className="relative z-10 p-6 flex flex-col h-full">
                       {event.posterUrl && (
-                        <div className="mb-4">
-                          <img
-                            src={`/api/${event.posterUrl}`}
-                            alt={event.eventName}
-                            className="w-full h-48 object-cover rounded-md mx-auto shadow-md"
-                          />
-                        </div>
-                      )}
+                          <div className="mb-4 relative w-full" style={{ aspectRatio: '4 / 5' }}>
+                            <img
+                              src={`/api/${event.posterUrl}`}
+                              alt={event.eventName}
+                              className="absolute inset-0 w-full h-full object-cover rounded-md mx-auto shadow-md"
+                            />
+                          </div>
+                        )}
+
 
                       <h3 className="text-2xl font-extrabold text-white mb-1 leading-tight">{event.eventName}</h3>
                       <p className="text-purple-300 text-sm font-medium mb-3">{event.eventCategory}</p>
@@ -429,14 +430,15 @@ const EventsPage: React.FC = () => {
         {selectedEvent ? (
           <div className="text-left max-h-[70vh] overflow-y-auto pr-2 p-4 bg-gray-700/30 rounded-lg shadow-inner">
             {selectedEvent.posterUrl && (
-              <div className="mb-6">
-                <img
-                  src={`/api/${selectedEvent.posterUrl}`}
-                  alt={selectedEvent.eventName}
-                  className="w-full max-h-80 object-contain rounded-lg shadow-md mx-auto"
-                />
-              </div>
-            )}
+                <div className="mb-6 relative w-full max-w-md mx-auto" style={{ aspectRatio: '4 / 5' }}>
+                  <img
+                    src={`/api/${selectedEvent.posterUrl}`}
+                    alt={selectedEvent.eventName}
+                    className="absolute inset-0 w-full h-full object-cover rounded-lg shadow-md"
+                  />
+                </div>
+              )}
+
 
             <h3 className="text-2xl font-bold text-white mb-4 border-b border-gray-600 pb-2">{selectedEvent.eventName}</h3>
 
