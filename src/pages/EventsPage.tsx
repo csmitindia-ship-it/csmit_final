@@ -35,6 +35,7 @@ interface Event {
   posterUrl?: string; 
   registrationLink?: string;
   open_to_non_mit?: boolean | number;
+  posterImage?: string;
 }
 
 const EventsPage: React.FC = () => {
@@ -339,16 +340,16 @@ const EventsPage: React.FC = () => {
                     <div className="absolute inset-0 bg-gradient-to-br from-purple-600/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 z-0"></div>
 
                     <div className="relative z-10 p-6 flex flex-col h-full">
-                      {event.posterUrl && (
+                      {event.posterImage && (
                           <div className="mb-4 w-full bg-black/40 rounded-md shadow-md flex justify-center items-center overflow-hidden" style={{ aspectRatio: '4 / 5' }}>
                             <img
-                              src={`/api/${event.posterUrl}`}
+                              src={`data:image/jpeg;base64,${event.posterImage}`}
                               alt={event.eventName}
                               className="w-full h-full object-contain"
                             />
                           </div>
-
                         )}
+
 
 
                       <h3 className="text-2xl font-extrabold text-white mb-1 leading-tight">{event.eventName}</h3>
@@ -430,16 +431,18 @@ const EventsPage: React.FC = () => {
       >
         {selectedEvent ? (
           <div className="text-left max-h-[70vh] overflow-y-auto pr-2 p-4 bg-gray-700/30 rounded-lg shadow-inner">
-            {selectedEvent.posterUrl && (
-                <div className="mb-6 w-full max-w-md mx-auto bg-black/40 rounded-lg shadow-md flex justify-center items-center overflow-hidden" style={{ aspectRatio: '4 / 5' }}>
-                  <img
-                    src={`/api/${selectedEvent.posterUrl}`}
-                    alt={selectedEvent.eventName}
-                    className="w-full h-full object-contain"
-                  />
-                </div>
-
-              )}
+            {selectedEvent.posterImage && (
+      <div
+        className="mb-6 w-full max-w-md mx-auto bg-black/40 rounded-lg shadow-md flex justify-center items-center overflow-hidden"
+        style={{ aspectRatio: '4 / 5' }}
+      >
+        <img
+          src={`data:image/jpeg;base64,${selectedEvent.posterImage}`}
+          alt={selectedEvent.eventName}
+          className="w-full h-full object-contain"
+        />
+      </div>
+    )}
 
 
             <h3 className="text-2xl font-bold text-white mb-4 border-b border-gray-600 pb-2">{selectedEvent.eventName}</h3>
