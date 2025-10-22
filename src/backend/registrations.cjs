@@ -189,22 +189,11 @@ module.exports = function (db, uploadTransactionScreenshot) {
   router.get('/by-email/:userEmail', async (req, res) => {
     const { userEmail } = req.params;
     try {
-      const [workshopRegistrations] = await db.execute(
+      const [registrations] = await db.execute(
         'SELECT eventId FROM registrations WHERE userEmail = ?',
         [userEmail]
       );
-
-      const [nonWorkshopRegistrations] = await db.execute(
-        'SELECT eventId FROM enigma_non_workshop_registrations WHERE userEmail = ?',
-        [userEmail]
-      );
-
-      const allRegistrations = [
-        ...workshopRegistrations,
-        ...nonWorkshopRegistrations,
-      ];
-
-      res.status(200).json(allRegistrations);
+      res.status(200).json(registrations);
     } catch (error) {
       res.status(500).json({ message: 'Failed to fetch registered events.' });
     }
@@ -234,19 +223,37 @@ module.exports = function (db, uploadTransactionScreenshot) {
   });
 
   router.post('/simple', async (req, res) => {
-    const { userEmail, eventId } = req.body;
+    const { userEmail, eventId, userName, college } = req.body;
 
-    if (!userEmail || !eventId) {
+    if (!userEmail || !eventId || !userName || !college) {
       return res
         .status(400)
         .json({ message: 'Missing required fields for simple registration.' });
     }
 
     try {
+      const [[event]] = await db.execute(
+        `SELECT eventName, registrationFees, 'Enigma' as symposium 
+         FROM enigma_events WHERE id = ? 
+         UNION 
+         SELECT eventName, registrationFees, 'Carteblanche' as symposium 
+         FROM carte_blanche_events WHERE id = ?`,
+        [eventId, eventId]
+      );
+
+      if (!event) {
+        return res.status(404).json({ message: 'Event not found.' });
+      }
+
+      if (event.registrationFees > 0) {
+        return res.status(400).json({ message: 'This endpoint is only for free events.' });
+      }
+
       const [existing] = await db.execute(
-        'SELECT id FROM enigma_non_workshop_registrations WHERE userEmail = ? AND eventId = ?',
+        'SELECT id FROM registrations WHERE userEmail = ? AND eventId = ?',
         [userEmail, eventId]
       );
+
       if (existing.length > 0) {
         return res
           .status(409)
@@ -254,8 +261,16 @@ module.exports = function (db, uploadTransactionScreenshot) {
       }
 
       await db.execute(
-        'INSERT INTO enigma_non_workshop_registrations (userEmail, eventId) VALUES (?, ?)',
-        [userEmail, eventId]
+        `INSERT INTO registrations 
+         (symposium, eventId, userName, userEmail, transactionAmount) 
+         VALUES (?, ?, ?, ?, ?)`,
+        [
+          event.symposium,
+          eventId,
+          userName,
+          userEmail,
+          0,
+        ]
       );
 
       res.status(201).json({ message: 'Registration successful.' });
