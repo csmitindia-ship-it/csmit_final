@@ -220,7 +220,12 @@ const AdminEventsDisplayPage: React.FC = () => {
                 </div>
                 {event.posterImage && (
                   <div className="mb-4">
-                    <img src={`data:image/jpeg;base64,${event.posterImage}`} alt="Event Poster" className="w-full h-48 object-cover rounded-md" />
+                    <img
+                      src={`data:image/jpeg;base64,${event.posterImage}`}
+                      alt="Event Poster"
+                      className="w-full h-auto object-contain rounded-md"
+                    />
+
                   </div>
                 )}
                 <h4 className="text-xl font-bold text-white mb-2">{event.eventName}</h4>
