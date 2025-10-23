@@ -148,7 +148,7 @@ module.exports = function (db, uploadTransactionScreenshot) {
     try {
       const [registrations] = await db.execute(
         `SELECT r.transactionId, r.transactionUsername, r.transactionTime, r.transactionDate, r.transactionAmount, 
-                u.fullName as userName, u.email, u.college 
+                u.fullName as userName, u.email, u.college, r.mobileNumber 
          FROM registrations r 
          JOIN users u ON r.userEmail = u.email 
          WHERE r.eventId = ?`,

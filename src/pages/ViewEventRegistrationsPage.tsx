@@ -9,6 +9,7 @@ interface Registration {
   userName: string;
   email: string;
   college: string;
+  mobileNumber: string;
   transactionId: string;
   transactionUsername: string;
   transactionTime: string;
@@ -76,8 +77,8 @@ const ViewEventRegistrationsPage: React.FC = () => {
 
     autoTable(doc, {
       startY: 30,
-      head: [['Name', 'Email', 'College']],
-      body: registrations.map(r => [r.userName, r.email, r.college]),
+      head: [['Name', 'Email', 'College', 'Mobile Number']],
+      body: registrations.map(r => [r.userName, r.email, r.college, r.mobileNumber]),
     });
 
     doc.save(`event_${eventDetails.eventName}_registrations.pdf`);
@@ -109,6 +110,7 @@ const ViewEventRegistrationsPage: React.FC = () => {
                 <th className="py-3 px-4 text-left">Name</th>
                 <th className="py-3 px-4 text-left">Email</th>
                 <th className="py-3 px-4 text-left">College</th>
+                <th className="py-3 px-4 text-left">Mobile Number</th>
               </tr>
             </thead>
             <tbody>
@@ -117,6 +119,7 @@ const ViewEventRegistrationsPage: React.FC = () => {
                   <td className="py-3 px-4">{registration.userName}</td>
                   <td className="py-3 px-4">{registration.email}</td>
                   <td className="py-3 px-4">{registration.college}</td>
+                  <td className="py-3 px-4">{registration.mobileNumber}</td>
                 </tr>
               ))}
             </tbody>
