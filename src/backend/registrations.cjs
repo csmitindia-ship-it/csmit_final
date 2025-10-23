@@ -142,6 +142,34 @@ module.exports = function (db, uploadTransactionScreenshot) {
       }
     }
   );
+   // routes/registrations.js
+router.get('/registered-users', async (req, res) => {
+  try {
+    const [users] = await db.execute(`
+      SELECT 
+        DISTINCT u.id,
+        u.fullName,
+        u.email,
+        u.mobile,
+        u.college,
+        u.department,
+        u.yearOfPassing,
+        u.state,
+        u.district,
+        COUNT(r.eventId) AS totalEvents
+      FROM users u
+      JOIN registrations r ON u.email = r.userEmail
+      GROUP BY u.id, u.fullName, u.email, u.mobile, u.college, 
+               u.department, u.yearOfPassing, u.state, u.district
+      ORDER BY totalEvents DESC;
+    `);
+
+    res.status(200).json(users);
+  } catch (error) {
+    console.error('Error fetching active users:', error);
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
+});
 
   router.get('/event/:eventId', async (req, res) => {
     const { eventId } = req.params;

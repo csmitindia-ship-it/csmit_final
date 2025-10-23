@@ -26,6 +26,7 @@ const AdminHeader: React.FC = () => {
     { label: 'View Registrations', onClick: () => navigate('/admin/view-registrations') },
     { label: 'Registration Status', onClick: () => navigate('/admin/registration-status') },
     { label: 'Update Winners', onClick: () => navigate('/admin/update-winners') },
+    { label: 'Registered Users', onClick: () => navigate('/admin/registered-users') },
   ];
 
   return (
