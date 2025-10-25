@@ -16,12 +16,14 @@ interface Experience {
 
 const ApprovedExperiencesPage: React.FC = () => {
   const [approvedExperiences, setApprovedExperiences] = useState<Experience[]>([]);
-  const [modal, setModal] = useState({ isOpen: false, title: '', message: '' });
+  const [modal, setModal] = useState({ isOpen: false, title: '', message: '', selectedId: null as number | null });
+
   const [isLoading, setIsLoading] = useState(true);
 
   const showModal = (title: string, message: string) => {
-    setModal({ isOpen: true, title, message });
-  };
+  setModal(prev => ({ ...prev, isOpen: true, title, message }));
+};
+
 
   const fetchExperiences = async () => {
     setIsLoading(true);
@@ -46,31 +48,34 @@ const ApprovedExperiencesPage: React.FC = () => {
   }, []);
 
   const handleDeleteExperience = (id: number) => {
-    setModal({ 
-      isOpen: true, 
-      title: 'Confirm Deletion', 
-      message: 'Are you sure you want to delete this experience?' 
+  setModal({ 
+    isOpen: true, 
+    title: 'Confirm Deletion', 
+    message: 'Are you sure you want to delete this experience?', 
+    selectedId: id
+  });
+};
+
+  const confirmDelete = async () => {
+  if (modal.selectedId === null) return;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/placements/admin/delete-experience/${modal.selectedId}`, {
+      method: 'DELETE',
     });
-  };
+    const result = await response.json();
 
-  const confirmDelete = async (id: number) => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/placements/admin/delete-experience/${id}`, {
-        method: 'DELETE',
-      });
-      const result = await response.json();
-
-      if (response.ok) {
-        fetchExperiences();
-        showModal('Success', 'Experience deleted successfully!');
-      } else {
-        showModal('Error', result.message || 'Failed to delete experience.');
-      }
-    } catch (err) {
-      showModal('Error', 'Failed to delete experience.');
+    if (response.ok) {
+      fetchExperiences();
+      showModal('Success', 'Experience deleted successfully!');
+    } else {
+      showModal('Error', result.message || 'Failed to delete experience.');
     }
-    setModal({ isOpen: false, title: '', message: '' });
-  };
+  } catch (err) {
+    showModal('Error', 'Failed to delete experience.');
+  }
+};
+
 
   return (
     <>
@@ -116,7 +121,7 @@ const ApprovedExperiencesPage: React.FC = () => {
                       }}
                       className="w-full md:w-auto text-center px-4 py-2 bg-purple-600 text-white text-sm font-semibold rounded-lg hover:bg-purple-700 transition-colors"
                     >
-                      View Resume
+                      View Experience
                     </button>
                   </div>
                 </div>
@@ -131,12 +136,13 @@ const ApprovedExperiencesPage: React.FC = () => {
       )}
       <ThemedModal
         isOpen={modal.isOpen}
-        onClose={() => setModal({ isOpen: false, title: '', message: '' })}
+        onClose={() => setModal({ isOpen: false, title: '', message: '', selectedId: null })}
         title={modal.title}
         message={modal.message}
-        onConfirm={modal.title === 'Confirm Deletion' ? () => confirmDelete(approvedExperiences.find(exp => exp.id)!.id) : undefined}
+        onConfirm={modal.title === 'Confirm Deletion' ? confirmDelete : undefined}
         showConfirmButton={modal.title === 'Confirm Deletion'}
       />
+
     </>
   );
 };
