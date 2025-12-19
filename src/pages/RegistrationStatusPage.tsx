@@ -17,7 +17,7 @@ interface Registration {
   transactionDate: string;
   transactionAmount: number;
   transactionScreenshot: { type: string; data: number[] };
-  verified: boolean | null;
+  verified: boolean | null | number;
 }
 
 const RegistrationStatusPage: React.FC = () => {
@@ -70,9 +70,9 @@ const RegistrationStatusPage: React.FC = () => {
     return URL.createObjectURL(blob);
   };
 
-  const getStatusText = (verified: boolean | null) => {
-    if (verified === true) return <span className="text-green-500">Verified</span>;
-    if (verified === false) return <span className="text-red-500">Rejected</span>;
+  const getStatusText = (verified: boolean | null | number) => {
+    if (verified == true) return <span className="text-green-500">Verified</span>;
+    if (verified == false) return <span className="text-red-500">Rejected</span>;
     return <span className="text-yellow-500">Pending</span>;
   };
 
@@ -141,8 +141,8 @@ const RegistrationStatusPage: React.FC = () => {
               <img src={bufferToImageUrl(selectedRegistration.transactionScreenshot)} alt="Transaction Screenshot" className="max-w-full h-auto" />
             </div>
             <div className="mt-4 flex justify-end gap-4">
-              {selectedRegistration.verified !== true && <button onClick={() => handleVerify(selectedRegistration)} className="bg-green-500 text-white px-4 py-2 rounded">Verify</button>}
-              {selectedRegistration.verified !== false && <button onClick={() => handleReject(selectedRegistration)} className="bg-red-500 text-white px-4 py-2 rounded">Reject</button>}
+              {selectedRegistration.verified != true && <button onClick={() => handleVerify(selectedRegistration)} className="bg-green-500 text-white px-4 py-2 rounded">Verify</button>}
+              {selectedRegistration.verified != false && <button onClick={() => handleReject(selectedRegistration)} className="bg-red-500 text-white px-4 py-2 rounded">Reject</button>}
               <button onClick={() => setSelectedRegistration(null)} className="bg-gray-500 text-white px-4 py-2 rounded">Close</button>
             </div>
           </div>
