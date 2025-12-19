@@ -8,6 +8,8 @@ import backgroundImage from '../Login_Sign/photo.jpeg';
 import { useSearchParams } from 'react-router-dom';
 import GeneralRegistrationForm from './GeneralRegistrationForm';
 import WorkshopRegistrationForm from './WorkshopRegistrationForm';
+import API_BASE_URL from '../Config'; // adjust path if needed
+
 import axios from 'axios';
 
 const RegistrationPage: React.FC = () => {
@@ -25,7 +27,7 @@ const RegistrationPage: React.FC = () => {
     const fetchEventDetails = async () => {
       if (eventId && symposium) {
         try {
-          const response = await axios.get(`/api/events/${eventId}?symposium=${symposium}`);
+          const response = await axios.get(`${API_BASE_URL}/events/${eventId}?symposium=${symposium}`);
           setEvent(response.data);
         } catch (error) {
           console.error("Error fetching event details:", error);
@@ -36,7 +38,7 @@ const RegistrationPage: React.FC = () => {
     const checkRegistrationStatus = async () => {
       if (user && user.email && eventId) {
         try {
-          const response = await axios.get(`/api/registrations/${user.email}`);
+          const response = await axios.get(`${API_BASE_URL}/registrations/${user.email}`);
           const registrations = response.data;
           const isAlreadyRegistered = registrations.some((reg: any) => reg.eventId === parseInt(eventId, 10));
           setIsRegistered(isAlreadyRegistered);

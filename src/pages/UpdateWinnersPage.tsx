@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import API_BASE_URL from '../Config'; // adjust path if needed
+
 
 interface Registration {
   id: number;
@@ -72,7 +74,7 @@ const UpdateWinnersPage: React.FC = () => {
   useEffect(() => {
     const fetchEvents = async () => {
       try {
-        const response = await fetch('/api/events');
+        const response = await fetch(`${API_BASE_URL}/events`);
         const data = await response.json();
         setEvents(data);
       } catch (error) {
@@ -90,7 +92,7 @@ const UpdateWinnersPage: React.FC = () => {
     setIneligibleMessage('');
     setModalMessage(null);
     try {
-      const response = await fetch(`/api/events/${eventId}/registrations`);
+      const response = await fetch(`${API_BASE_URL}/events/${eventId}/registrations`);
       const data = await response.json();
       if (response.ok) {
         setRegistrations(data);
@@ -107,7 +109,7 @@ const UpdateWinnersPage: React.FC = () => {
     if (selectedRound) {
       try {
         const response = await fetch(
-          `/api/events/${selectedRound.eventId}/rounds/${selectedRound.roundNumber}/eligible`,
+          `${API_BASE_URL}/events/${selectedRound.eventId}/rounds/${selectedRound.roundNumber}/eligible`,
           {
             method: 'POST',
             headers: {
@@ -140,7 +142,7 @@ const UpdateWinnersPage: React.FC = () => {
       setModalMessage(null);  // reset old message
       try {
         const response = await fetch(
-          `/api/events/${selectedRound.eventId}/rounds/${selectedRound.roundNumber}/notify`,
+          `${API_BASE_URL}/events/${selectedRound.eventId}/rounds/${selectedRound.roundNumber}/notify`,
           {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },

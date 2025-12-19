@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { createPortal } from "react-dom";
 import API_BASE_URL from '../Config'; // adjust path if needed
 
 type Round = {
@@ -47,38 +48,45 @@ const ThemedModal: React.FC<{
 }> = ({ isOpen, onClose, title, message, children, showConfirmButton, onConfirm }) => {
   if (!isOpen) return null;
 
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
+  return createPortal(
+    <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-[9999] p-4">
       <div className="bg-gray-800 border border-gray-700 rounded-lg shadow-lg max-w-lg w-full p-6 text-white">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-xl font-bold">{title}</h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors">
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-white transition-colors"
+          >
             &times;
           </button>
         </div>
+
         <p className="text-gray-300 mb-4">{message}</p>
+
         {children}
+
         <div className="flex justify-end space-x-2 mt-4">
           <button
             onClick={onClose}
-            className="px-4 py-2 bg-gray-600 text-white font-semibold rounded-md hover:bg-gray-700 transition-colors"
+            className="px-4 py-2 bg-gray-600 text-white font-semibold rounded-md hover:bg-gray-700"
           >
-            Cancel
+            Ok
           </button>
+
           {showConfirmButton && (
             <button
               onClick={onConfirm}
-              className="px-4 py-2 bg-purple-600 text-white font-semibold rounded-md hover:bg-purple-700 transition-colors"
+              className="px-4 py-2 bg-purple-600 text-white font-semibold rounded-md hover:bg-purple-700"
             >
               Confirm
             </button>
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
-
 const Loader: React.FC = () => (
   <div className="flex justify-center items-center h-full">
     <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-purple-500"></div>
@@ -250,10 +258,19 @@ const App: React.FC = () => {
 
   if (!response.ok) throw new Error('Failed to save event');
 
+  // Show success modal first to avoid scroll jump\
+  
+  setModalTitle('Success');
+  setModalMessage(editingEvent ? 'Event updated successfully!' : 'Event created successfully!');
+  setShowConfirmButton(false);
+  setIsModalOpen(true);
+
+  // THE FOLLOWING CODE IS TEMPORARILY DISABLED FOR DEBUGGING THE SCROLL ISSUE
+  
   // Refresh the event list
   await fetchEvents();
 
-  // ✅ Reset form only if it's a new event (not during edit)
+  // Reset form only if it's a new event (not during edit)
   if (!editingEvent) {
     setNewEvent({
       eventName: '',
@@ -271,12 +288,12 @@ const App: React.FC = () => {
     });
     setRounds([{ roundNumber: 1, roundDetails: '', roundDateTime: '' }]);
   } else {
-    setEditingEvent({ ...editingEvent });
+    // If editing, you might want to update the editingEvent state from the fetched events
+    // to ensure it's in sync with the database, especially if the backend modifies data.
+    // For now, we just close the form or reset it as intended.
+    setEditingEvent(null); // Example: close the edit form
   }
-  setModalTitle('Success');
-  setModalMessage(editingEvent ? 'Event updated successfully!' : 'Event created successfully!');
-  setShowConfirmButton(false);
-  setIsModalOpen(true);
+  
 }  catch (err) {
       console.error(err);
       setModalTitle('Error');

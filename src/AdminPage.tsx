@@ -28,7 +28,7 @@ const AdminPage: React.FC = () => {
 
       <main className="relative z-10 py-20 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
-          <div className="bg-gray-900/70 backdrop-blur-md border border-purple-500/30 p-8 rounded-lg">
+          <div className="bg-gray-900/70 border border-purple-500/30 p-8 rounded-lg">
             <button 
               onClick={() => setShowTimer(!showTimer)}
               className="px-6 py-3 font-semibold rounded-lg transition-all duration-300 bg-gray-800/60 text-gray-300 hover:bg-purple-500/50 mb-4"

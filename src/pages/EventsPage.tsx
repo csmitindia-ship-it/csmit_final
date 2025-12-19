@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import Header from '../ui/Header'; 
 import backgroundImage from '../Login_Sign/photo.jpeg'; 
 import LoginPage from '../Login_Sign/LoginPage'; 
@@ -10,6 +9,7 @@ import ThemedModal from '../components/ThemedModal';
 import EventCountdown from '../components/EventCountdown'; 
 import WorkshopRegistrationModal from '../components/WorkshopRegistrationModal';
 import axios from 'axios';
+import API_BASE_URL from '../Config'; // adjust path if needed
 
 interface Round {
   roundNumber: number;
@@ -51,13 +51,12 @@ const EventsPage: React.FC = () => {
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [isWorkshopModalOpen, setIsWorkshopModalOpen] = useState(false);
-  const [selectedWorkshopEvent, setSelectedWorkshopEvent] = useState<Event | null>(null);
+  const [selectedWorkshopEvent] = useState<Event | null>(null);
   const [cartItems, setCartItems] = useState<any[]>([]);
   const [isCartActionInProgress, setIsCartActionInProgress] = useState(false);
   const [symposiumStatus, setSymposiumStatus] = useState<any[]>([]);
 
   const { user, isLoggedIn, loading: authLoading } = useAuth();
-  const navigate = useNavigate();
 
   const MIT_COLLEGE_NAME = "Madras Institute of Technology";
 
@@ -82,7 +81,7 @@ const EventsPage: React.FC = () => {
   const fetchEvents = async () => {
     setIsLoading(true);
     try {
-      const response = await axios.get('/api/events');
+      const response = await axios.get(`${API_BASE_URL}/events`);
       setEvents(response.data);
     } catch (error) {
       console.error('Error fetching events:', error);
@@ -93,7 +92,7 @@ const EventsPage: React.FC = () => {
 
   const fetchSymposiumStatus = async () => {
     try {
-      const response = await axios.get('/api/symposium/status');
+      const response = await axios.get(`${API_BASE_URL}/symposium/status`);
       setSymposiumStatus(response.data.data);
     } catch (error) {
       console.error('Error fetching symposium status:', error);
@@ -103,7 +102,7 @@ const EventsPage: React.FC = () => {
   const fetchRegisteredEvents = async () => {
     if (!user || !user.email) return;
     try {
-      const response = await axios.get(`/api/registrations/by-email/${user.email}`);
+      const response = await axios.get(`${API_BASE_URL}/registrations/by-email/${user.email}`);
       setRegisteredEvents(response.data.map((reg: any) => reg.eventId));
     } catch (error) {
       console.error('Error fetching registered events:', error);
@@ -113,7 +112,7 @@ const EventsPage: React.FC = () => {
   const fetchCartItems = async () => {
     if (!user || !user.id) return;
     try {
-      const response = await axios.get(`/api/cart/${user.id}`);
+      const response = await axios.get(`${API_BASE_URL}/cart/${user.id}`);
       setCartItems(response.data);
     } catch (error) {
       console.error('Error fetching cart items:', error);
@@ -199,12 +198,11 @@ const EventsPage: React.FC = () => {
 
     setIsCartActionInProgress(true);
     try {
-      const response = await axios.post('/api/cart', {
+      await axios.post(`${API_BASE_URL}/cart`, {
         userEmail: user.email,
         eventId: event.id,
-        symposiumName: event.symposiumName,
+        symposiumName: activeSymposium,
       });
-
       setModalContent({ title: 'Success', message: 'Event added to cart successfully!' });
       await fetchCartItems();
       setIsModalOpen(true);
@@ -223,7 +221,7 @@ const EventsPage: React.FC = () => {
 
     setIsCartActionInProgress(true);
     try {
-      await axios.delete(`/api/cart/${cartItem.cartId}`, { data: { userEmail: user.email } });
+      await axios.delete(`${API_BASE_URL}/cart/${cartItem.cartId}`, { data: { userEmail: user.email } });
       setModalContent({ title: 'Success', message: 'Event removed from cart successfully!' });
       await fetchCartItems();
       setIsModalOpen(true);
@@ -240,7 +238,7 @@ const EventsPage: React.FC = () => {
     if (!user) return;
 
     try {
-      await axios.post('/api/registrations/simple', {
+      await axios.post(`${API_BASE_URL}/registrations/simple`, {
         userEmail: user.email,
         eventId: event.id,
         userName: user.name,

@@ -5,6 +5,7 @@ import Header from "../ui/Header";
 import backgroundImage from '../Login_Sign/photo.jpeg';
 import WorkshopRegistrationForm from './WorkshopRegistrationForm';
 import ThemedModal from '../components/ThemedModal';
+import API_BASE_URL from '../Config'; // adjust path if needed
 
 interface CartItem {
   cartId: number;
@@ -38,7 +39,7 @@ const CartPage: React.FC = () => {
     const fetchCartItems = async () => {
       if (!user) return;
       try {
-        const response = await axios.get(`/api/cart/${user.id}`);
+        const response = await axios.get(`${API_BASE_URL}/cart/${user.id}`);
         setCartItems(response.data);
       } catch (error) {
         showModal('Error', 'Error fetching cart items.');
@@ -52,7 +53,7 @@ const CartPage: React.FC = () => {
   const handleRemoveFromCart = async (cartId: number) => {
     if (!user) return;
     try {
-      await axios.delete(`/api/cart/${cartId}`, {
+      await axios.delete(`${API_BASE_URL}/cart/${cartId}`, {
         data: { userEmail: user.email },
       });
       setCartItems(cartItems.filter((item) => item.cartId !== cartId));
@@ -72,7 +73,7 @@ const CartPage: React.FC = () => {
     } else {
       for (const item of freeEvents) {
         try {
-          await axios.post(`/api/registrations/simple`, {
+          await axios.post(`${API_BASE_URL}/registrations/simple`, {
             userEmail: user.email,
             eventId: item.eventId,
           });
@@ -94,7 +95,7 @@ const CartPage: React.FC = () => {
     const freeEvents = cartItems.filter(item => item.eventDetails.registrationFees === 0);
     for (const item of freeEvents) {
       try {
-        await axios.post(`/api/registrations/simple`, {
+        await axios.post(`${API_BASE_URL}/registrations/simple`, {
           userEmail: user.email,
           eventId: item.eventId,
         });
@@ -105,7 +106,7 @@ const CartPage: React.FC = () => {
 
     for (const item of cartItems) {
       try {
-        await axios.delete(`/api/cart/${item.cartId}`, {
+        await axios.delete(`${API_BASE_URL}/cart/${item.cartId}`, {
           data: { userEmail: user.email },
         });
       } catch (error) {
@@ -167,12 +168,12 @@ const CartPage: React.FC = () => {
                   <h1 className="text-2xl font-bold mb-4 text-center">Your Cart</h1>
                   {loading ? (
                     <div>Loading...</div>
-                  ) : cartItems.length === 0 ? (
+                  ) : !Array.isArray(cartItems) || cartItems.length === 0 ? (
                     <p className="text-center">Your cart is empty.</p>
                   ) : (
                     <div>
                       <div className="flex flex-wrap gap-4 justify-center">
-                        {cartItems.map((item) => (
+                        {Array.isArray(cartItems) && cartItems.map((item) => (
                           <div key={item.cartId} className="bg-gray-800/80 p-6 rounded-lg w-full sm:w-96">
                             <h2 className="text-xl font-semibold">{item.eventDetails.eventName}</h2>
                             <p>{item.eventDetails.eventDescription}</p>

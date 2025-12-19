@@ -3,6 +3,7 @@ import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import ThemedModal from '../components/ThemedModal';
+import API_BASE_URL from '../Config'; // adjust path if needed
 
 interface AccountDetail {
   id: number;
@@ -43,7 +44,7 @@ const AccountDetailsPage: React.FC = () => {
 
   const fetchAccountDetails = async () => {
     try {
-      const response = await axios.get('/api/admin/accounts');
+      const response = await axios.get(`${API_BASE_URL}/admin/accounts`);
       setAccountDetails(response.data);
     } catch (err) {
       showModal('Error', 'Failed to fetch account details. Please try again later.');
@@ -67,8 +68,8 @@ const AccountDetailsPage: React.FC = () => {
 
     try {
       const url = editingId
-        ? `/api/admin/accounts/${editingId}`
-        : '/api/admin/accounts';
+        ? `${API_BASE_URL}/admin/accounts/${editingId}`
+        : `${API_BASE_URL}/admin/accounts`;
       const method = editingId ? 'put' : 'post';
 
       await axios[method](url, formData, {
@@ -104,7 +105,7 @@ const AccountDetailsPage: React.FC = () => {
   const confirmDelete = async () => {
     if (deletingId === null) return;
     try {
-      await axios.delete(`/api/admin/accounts/${deletingId}`);
+      await axios.delete(`${API_BASE_URL}/admin/accounts/${deletingId}`);
       showModal('Success', 'Account details deleted successfully!');
       fetchAccountDetails();
     } catch (err) {

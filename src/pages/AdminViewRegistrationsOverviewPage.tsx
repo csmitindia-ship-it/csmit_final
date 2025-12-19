@@ -18,6 +18,7 @@ const AdminViewRegistrationsOverviewPage: React.FC = () => {
   const [events, setEvents] = useState<Event[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [modal, setModal] = useState({ isOpen: false, title: '', message: '' });
+  const [selectedSymposium, setSelectedSymposium] = useState('All');
   const navigate = useNavigate();
   const { user } = useAuth();
 
@@ -53,6 +54,13 @@ const AdminViewRegistrationsOverviewPage: React.FC = () => {
     }
   };
 
+  const filteredEvents = events.filter(event => {
+    if (selectedSymposium === 'All') {
+      return true;
+    }
+    return event.symposiumName === selectedSymposium;
+  });
+
   if (isLoading) {
     return <Loader />;
   }
@@ -69,17 +77,30 @@ const AdminViewRegistrationsOverviewPage: React.FC = () => {
         <h1 className="text-3xl font-bold text-white mb-6 text-center">
           View Event Registrations
         </h1>
+        <div className="mb-4">
+          <label htmlFor="symposium-filter" className="mr-2">Filter by Symposium:</label>
+          <select 
+            id="symposium-filter" 
+            value={selectedSymposium} 
+            onChange={e => setSelectedSymposium(e.target.value)} 
+            className="p-2 rounded border bg-gray-700 text-white"
+          >
+            <option value="All">All</option>
+            <option value="Enigma">Enigma</option>
+            <option value="Carteblanche">Carte Blanche</option>
+          </select>
+        </div>
         <div className="overflow-x-auto">
           <table className="min-w-full bg-gray-800 rounded-lg">
             <thead>
               <tr className="bg-gray-700">
                 <th className="py-3 px-4 text-left">Event Name</th>
-                <th className="py-3 px-4 text-left">Event Date</th>
+                <th className="py-3 px-4 text-left">Last Date to Register</th>
                 <th className="py-3 px-4 text-left">Actions</th>
               </tr>
             </thead>
             <tbody>
-              {events.map((event) => (
+              {filteredEvents.map((event) => (
                 <tr key={event.id} className="border-b border-gray-700">
                   <td className="py-3 px-4">{event.eventName}</td>
                   <td className="py-3 px-4">{new Date(event.lastDateForRegistration).toLocaleDateString()}</td>

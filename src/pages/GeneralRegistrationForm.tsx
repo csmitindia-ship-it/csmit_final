@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
+import API_BASE_URL from '../Config'; // adjust path if needed
+
 
 interface GeneralRegistrationFormProps {
   eventName: string;
@@ -47,7 +49,7 @@ const GeneralRegistrationForm: React.FC<GeneralRegistrationFormProps> = ({ event
     setLoading(true);
     setError(null);
     try {
-      const response = await axios.get(`/api/admin/accounts/event/${eventId}`);
+      const response = await axios.get(`${API_BASE_URL}/admin/accounts/event/${eventId}`);
       if (response.data) {
         setAccountDetails(response.data);
       } else {
@@ -83,14 +85,14 @@ const GeneralRegistrationForm: React.FC<GeneralRegistrationFormProps> = ({ event
     setSuccess(null);
 
     try {
-      const checkResponse = await axios.get(`/api/registrations/check-transaction/${transactionId}`);
+      const checkResponse = await axios.get(`${API_BASE_URL}/registrations/check-transaction/${transactionId}`);
       if (checkResponse.data.exists) {
         setError('This transaction ID has already been used.');
         setLoading(false);
         return;
       }
 
-      const response = await axios.post('/api/registrations', {
+      const response = await axios.post(`${API_BASE_URL}/registrations`, {
         userEmail: user.email,
         eventId: eventId,
         transactionId,

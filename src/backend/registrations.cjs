@@ -5,13 +5,32 @@ module.exports = function (db, uploadTransactionScreenshot) {
   router.get('/all', async (req, res) => {
     try {
       const [registrations] = await db.execute(`
-        SELECT r.*, u.id as userId, vr.verified
-        FROM registrations r 
+        SELECT 
+            r.id,
+            u.id as userId,
+            r.symposium,
+            r.eventId,
+            r.userName,
+            r.userEmail,
+            r.mobileNumber,
+            r.transactionId,
+            r.transactionUsername,
+            r.transactionTime,
+            r.transactionDate,
+            r.transactionAmount,
+            r.transactionScreenshot,
+            vr.verified,
+            u.college,
+            COALESCE(ee.eventName, cbe.eventName) as eventName
+        FROM registrations r
         LEFT JOIN users u ON r.userEmail = u.email
+        LEFT JOIN enigma_events ee ON r.eventId = ee.id AND r.symposium = 'Enigma'
+        LEFT JOIN carte_blanche_events cbe ON r.eventId = cbe.id AND r.symposium = 'Carteblanche'
         LEFT JOIN verified_registrations vr ON u.id = vr.userId AND r.eventId = vr.eventId
       `);
       res.status(200).json(registrations);
     } catch (error) {
+      console.error('Failed to fetch all registrations:', error);
       res.status(500).json({ message: 'Failed to fetch all registrations.' });
     }
   });
@@ -306,7 +325,8 @@ router.get('/registered-users', async (req, res) => {
         `SELECT r.id, r.eventId, r.userEmail, r.round1, r.round2, r.round3, r.symposium 
          FROM registrations r
          JOIN users u ON r.userEmail = u.email
-         WHERE u.id = ?`,
+         JOIN verified_registrations vr ON u.id = vr.userId AND r.eventId = vr.eventId
+         WHERE u.id = ? AND vr.verified = 1`,
         [userId]
       );
 
@@ -325,11 +345,11 @@ router.get('/registered-users', async (req, res) => {
         }
 
         if (eventTable) {
-          const [[eventResult]] = await db.execute(
+          const [eventRows] = await db.execute(
             `SELECT * FROM ${eventTable} WHERE id = ?`,
             [reg.eventId]
           );
-          event = eventResult;
+          event = eventRows[0];
           if (event) {
             const [roundsResult] = await db.execute(
               `SELECT * FROM ${roundsTable} WHERE eventId = ?`,

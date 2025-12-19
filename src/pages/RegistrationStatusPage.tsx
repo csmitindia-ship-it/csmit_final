@@ -7,6 +7,7 @@ interface Registration {
   userId: number;
   symposium: string;
   eventId: number;
+  eventName: string; // Added eventName
   userName: string;
   userEmail: string;
   mobileNumber: string;
@@ -22,6 +23,7 @@ interface Registration {
 const RegistrationStatusPage: React.FC = () => {
   const [registrations, setRegistrations] = useState<Registration[]>([]);
   const [selectedRegistration, setSelectedRegistration] = useState<Registration | null>(null);
+  const [filter, setFilter] = useState('All'); // State for symposium filter
 
   const fetchRegistrations = useCallback(async () => {
     try {
@@ -69,19 +71,38 @@ const RegistrationStatusPage: React.FC = () => {
   };
 
   const getStatusText = (verified: boolean | null) => {
-    if (verified == true) return <span className="text-green-500">Verified</span>;
-    if (verified == false) return <span className="text-red-500">Rejected</span>;
+    if (verified === true) return <span className="text-green-500">Verified</span>;
+    if (verified === false) return <span className="text-red-500">Rejected</span>;
     return <span className="text-yellow-500">Pending</span>;
   };
+
+  const handleFilterChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+    setFilter(event.target.value);
+  };
+
+  const filteredRegistrations = registrations.filter(reg => {
+    if (filter === 'All') {
+      return true;
+    }
+    return reg.symposium === filter;
+  });
 
   return (
     <div className="container mx-auto p-4 text-black">
       <h1 className="text-2xl font-bold mb-4">Registration Status</h1>
+      <div className="mb-4">
+        <label htmlFor="symposium-filter" className="mr-2">Filter by Symposium:</label>
+        <select id="symposium-filter" value={filter} onChange={handleFilterChange} className="p-2 rounded border">
+          <option value="All">All</option>
+          <option value="Enigma">Enigma</option>
+          <option value="Carteblanche">Carte Blanche</option>
+        </select>
+      </div>
       <table className="min-w-full bg-white">
         <thead>
           <tr>
             <th className="py-2">User Name</th>
-            <th className="py-2">Event ID</th>
+            <th className="py-2">Event Name</th>
             <th className="py-2">Transaction ID</th>
             <th className="py-2">Amount</th>
             <th className="py-2">Status</th>
@@ -89,10 +110,10 @@ const RegistrationStatusPage: React.FC = () => {
           </tr>
         </thead>
         <tbody>
-          {registrations.map((reg) => (
+          {filteredRegistrations.map((reg) => (
             <tr key={reg.id}>
               <td className="border px-4 py-2">{reg.userName}</td>
-              <td className="border px-4 py-2">{reg.eventId}</td>
+              <td className="border px-4 py-2">{reg.eventName}</td>
               <td className="border px-4 py-2">{reg.transactionId}</td>
               <td className="border px-4 py-2">{reg.transactionAmount}</td>
               <td className="border px-4 py-2">{getStatusText(reg.verified)}</td>
@@ -111,7 +132,7 @@ const RegistrationStatusPage: React.FC = () => {
             <p><strong>User Name:</strong> {selectedRegistration.userName}</p>
             <p><strong>User Email:</strong> {selectedRegistration.userEmail}</p>
             <p><strong>Mobile Number:</strong> {selectedRegistration.mobileNumber}</p>
-            <p><strong>Event ID:</strong> {selectedRegistration.eventId}</p>
+            <p><strong>Event Name:</strong> {selectedRegistration.eventName}</p>
             <p><strong>Transaction ID:</strong> {selectedRegistration.transactionId}</p>
             <p><strong>Transaction Amount:</strong> {selectedRegistration.transactionAmount}</p>
             <p><strong>Status:</strong> {getStatusText(selectedRegistration.verified)}</p>
@@ -120,8 +141,8 @@ const RegistrationStatusPage: React.FC = () => {
               <img src={bufferToImageUrl(selectedRegistration.transactionScreenshot)} alt="Transaction Screenshot" className="max-w-full h-auto" />
             </div>
             <div className="mt-4 flex justify-end gap-4">
-              {selectedRegistration.verified != true && <button onClick={() => handleVerify(selectedRegistration)} className="bg-green-500 text-white px-4 py-2 rounded">Verify</button>}
-              {selectedRegistration.verified != false && <button onClick={() => handleReject(selectedRegistration)} className="bg-red-500 text-white px-4 py-2 rounded">Reject</button>}
+              {selectedRegistration.verified !== true && <button onClick={() => handleVerify(selectedRegistration)} className="bg-green-500 text-white px-4 py-2 rounded">Verify</button>}
+              {selectedRegistration.verified !== false && <button onClick={() => handleReject(selectedRegistration)} className="bg-red-500 text-white px-4 py-2 rounded">Reject</button>}
               <button onClick={() => setSelectedRegistration(null)} className="bg-gray-500 text-white px-4 py-2 rounded">Close</button>
             </div>
           </div>

@@ -58,10 +58,19 @@ const EnrolledEventsPage: React.FC = () => {
       }
       setIsLoading(true);
       try {
-        const response = await fetch(`/api/registrations/user/${user.id}`);
-        const data = await response.json();
-        setRegistrations(Array.isArray(data) ? data : [data]);
+        const response = await fetch(`${API_BASE_URL}/registrations/user/${user.id}`);
+        if (!response.ok) {
+          if (response.status === 404) {
+            setRegistrations([]);
+          } else {
+            throw new Error('Server error');
+          }
+        } else {
+          const data = await response.json();
+          setRegistrations(Array.isArray(data) ? data : [data]);
+        }
       } catch (error) {
+        console.error("Detailed error in fetchEnrolledEvents:", error);
         showModal('Error', 'Error fetching enrolled events.');
       } finally {
         setIsLoading(false);

@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import API_BASE_URL from '../Config'; // adjust path if needed
+
 import axios from 'axios';
 
 interface CartItem {
@@ -51,7 +53,7 @@ const WorkshopRegistrationForm: React.FC<WorkshopRegistrationFormProps> = ({ use
       );
 
       try {
-        const response = await axios.get(`/api/admin/accounts/event/${eventWithHighestFee.eventId}`);
+        const response = await axios.get(`${API_BASE_URL}/admin/accounts/event/${eventWithHighestFee.eventId}`);
         if (response.data) {
           setAccountDetails(response.data);
         } else {
@@ -105,7 +107,7 @@ const WorkshopRegistrationForm: React.FC<WorkshopRegistrationFormProps> = ({ use
       formData.append('mobileNumber', mobileNumber);
       formData.append('transactionScreenshot', transactionScreenshot);
 
-      await axios.post('/api/registrations', formData, {
+      await axios.post(`${API_BASE_URL}/registrations`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
@@ -119,8 +121,8 @@ const WorkshopRegistrationForm: React.FC<WorkshopRegistrationFormProps> = ({ use
   };
 
   return (
-    <div className="bg-gray-900/80 p-8 rounded-2xl shadow-2xl shadow-purple-500/20 border border-purple-500/30">
-      <h2 className="text-3xl font-bold text-white text-center mb-8">Workshop Registration</h2>
+    <div className="p-8 rounded-2xl">
+      <h2 className="text-3xl font-bold text-white text-center mb-8">Registration</h2>
       {error && <p className="text-red-500 text-center mb-4">{error}</p>}
       <div className="grid md:grid-cols-2 gap-8">
         {/* Left Column: Event Details */}
@@ -154,9 +156,9 @@ const WorkshopRegistrationForm: React.FC<WorkshopRegistrationFormProps> = ({ use
               </div>
               {qrCodeUrl && (
                 <div className="mt-4">
-                  <a href={qrCodeUrl} target="_blank" rel="noopener noreferrer" className="text-purple-400 hover:underline">
-                    View QR Code PDF
-                  </a>
+                  <object data={qrCodeUrl} type="application/pdf" width="100%" height="500px">
+                    <p>Your browser does not support PDFs. <a href={qrCodeUrl}>Download the PDF</a>.</p>
+                  </object>
                 </div>
               )}
 
