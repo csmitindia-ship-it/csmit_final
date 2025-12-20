@@ -10,7 +10,7 @@ module.exports = function (db, upload) {
           return res.status(400).json({
             type: 'error',
             title: 'Upload Failed',
-            message: 'File exceeds 2 MB compress and upload',
+            message: 'File size should not be more than 2MB.',
           });
         }
       }
@@ -45,6 +45,7 @@ module.exports = function (db, upload) {
           'Experience submitted successfully. It will be reviewed by the admin.',
       });
     } catch (error) {
+      console.error(error);
       res.status(500).json({
         type: 'error',
         title: 'Submission Failed',

@@ -245,6 +245,7 @@ async function createTablesIfNotExists() {
     `);
 
     if (emailColumns.length > 0) {
+      console.log("Found 'email' column, attempting to drop it.");
       await db.execute('ALTER TABLE experiences DROP COLUMN email');
     }
 
@@ -257,6 +258,7 @@ async function createTablesIfNotExists() {
     `);
 
     if (linkedinColumns.length > 0) {
+      console.log("Found 'linkedin_url' column, attempting to drop it.");
       await db.execute('ALTER TABLE experiences DROP COLUMN linkedin_url');
     }
 
