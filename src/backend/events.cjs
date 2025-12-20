@@ -14,9 +14,7 @@ module.exports = function(db, uploadEventPoster, transporter) {
       teamOrIndividual,
       location,
       registrationFees,
-      coordinatorName,
-      coordinatorContactNo,
-      coordinatorMail,
+      organizerId,
       lastDateForRegistration,
       isOpenForNonMIT,
       rounds,
@@ -24,12 +22,18 @@ module.exports = function(db, uploadEventPoster, transporter) {
 
     if (!symposiumName || !eventName || !eventCategory || !eventDescription ||
         numberOfRounds === undefined || !teamOrIndividual || !location ||
-        registrationFees === undefined || !coordinatorName || !coordinatorContactNo ||
-        !coordinatorMail || !lastDateForRegistration || !rounds) {
+        registrationFees === undefined || !organizerId || !lastDateForRegistration || !rounds) {
       return res.status(400).json({ message: 'Missing required event fields.' });
     }
 
     try {
+      const [[organizer]] = await db.execute('SELECT name, mobile, email FROM organizers WHERE id = ?', [organizerId]);
+      if (!organizer) {
+        return res.status(404).json({ message: 'Organizer not found.' });
+      }
+
+      const { name: coordinatorName, mobile: coordinatorContactNo, email: coordinatorMail } = organizer;
+
       let eventTable;
       let roundsTable;
       if (symposiumName === 'Enigma') {

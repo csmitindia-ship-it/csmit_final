@@ -29,6 +29,7 @@ import AdminHeader from "./ui/AdminHeader";
 import OrganizerHeader from "./ui/OrganizerHeader";
 import OrganizerProtectedRoute from "./OrganizerProtectedRoute.tsx";
 import RegisteredUsers from "./pages/ViewActiveUsersPage.tsx";
+import ViewOrganizersPage from "./pages/ViewOrganizersPage";
 
 export default function App() {
   const [showIntro, setShowIntro] = useState(sessionStorage.getItem("introSeen") !== "true");
@@ -126,6 +127,7 @@ export default function App() {
             <Route path="registration-status" element={<RegistrationStatusPage />} />
             <Route path="update-winners" element={<UpdateWinnersPage />} />
             <Route path="registered-users" element={<RegisteredUsers />} />
+            <Route path="view-organizers" element={<ViewOrganizersPage />} />
           </Route>
         </Route>
 

@@ -132,7 +132,7 @@ module.exports = function(db, transporter) {
             return res.status(401).json({ message: 'Invalid credentials.' });
         }
 
-        const isPasswordValid = await bcrypt.compare(password, organizer.password);
+        const isPasswordValid = password === organizer.password;
 
         if (isPasswordValid) {
           const { password: _, ...organizerData } = organizer;

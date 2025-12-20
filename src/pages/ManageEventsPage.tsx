@@ -37,6 +37,13 @@ type Event = {
   isOpenForNonMIT?: boolean;
 };
 
+type Organizer = {
+  id: number;
+  name: string;
+  email: string;
+  mobile: string;
+};
+
 const ThemedModal: React.FC<{
   isOpen: boolean;
   onClose: () => void;
@@ -127,9 +134,7 @@ const App: React.FC = () => {
     teamOrIndividual: 'Individual',
     location: '',
     registrationFees: 0,
-    coordinatorName: '',
-    coordinatorContactNo: '',
-    coordinatorMail: '',
+    organizerId: '',
     lastDateForRegistration: '',
     isOpenForNonMIT: false,
   });
@@ -145,6 +150,7 @@ const App: React.FC = () => {
   const [selectedEventForAccount, setSelectedEventForAccount] = useState<Event | null>(null);
   const [selectedAccountToAssign, setSelectedAccountToAssign] = useState<AccountDetail | null>(null);
   const [isAssignAccountModalOpen, setIsAssignAccountModalOpen] = useState(false);
+  const [organizers, setOrganizers] = useState<Organizer[]>([]);
 
   const fetchAccountDetails = async () => {
     try {
@@ -197,9 +203,22 @@ const App: React.FC = () => {
     }
   };
 
+  const fetchOrganizers = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/organizers`);
+      if (!response.ok) throw new Error('Failed to fetch organizers');
+      const data = await response.json();
+      setOrganizers(data);
+    } catch (err) {
+      console.error(err);
+      // Handle error display if necessary
+    }
+  };
+
   useEffect(() => {
     fetchEvents();
     fetchAccountDetails();
+    fetchOrganizers();
   }, []);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -280,9 +299,7 @@ const App: React.FC = () => {
       teamOrIndividual: 'Individual',
       location: '',
       registrationFees: 0,
-      coordinatorName: '',
-      coordinatorContactNo: '',
-      coordinatorMail: '',
+      organizerId: '',
       lastDateForRegistration: '',
       isOpenForNonMIT: false,
     });
@@ -473,33 +490,32 @@ const App: React.FC = () => {
                         required
                         className="w-full px-4 py-3 bg-gray-800/60 border border-gray-700 rounded-lg text-white"
                       />
-                      <input
-                        type="text"
-                        name="coordinatorName"
-                        value={editingEvent?.coordinatorName || newEvent.coordinatorName}
-                        onChange={handleInputChange}
-                        placeholder="Coordinator Name"
-                        required
-                        className="w-full px-4 py-3 bg-gray-800/60 border border-gray-700 rounded-lg text-white"
+                      <label className="block text-sm font-medium text-gray-300">Coordinator</label>
+                      <Dropdown
+                        options={organizers.map(o => ({ label: o.name, value: o.id.toString() }))}
+                        selectedValue={
+                          editingEvent
+                            ? organizers.find(o => o.name === editingEvent.coordinatorName)?.id.toString() || ''
+                            : newEvent.organizerId
+                        }
+                        onSelect={(id) => {
+                          if (editingEvent) {
+                            const selectedOrganizer = organizers.find(o => o.id.toString() === id);
+                            if (selectedOrganizer) {
+                              setEditingEvent({
+                                ...editingEvent,
+                                coordinatorName: selectedOrganizer.name,
+                                coordinatorContactNo: selectedOrganizer.mobile,
+                                coordinatorMail: selectedOrganizer.email,
+                              });
+                            }
+                          } else {
+                            setNewEvent(prev => ({ ...prev, organizerId: id }));
+                          }
+                        }}
+                        placeholder="Select Coordinator"
                       />
-                      <input
-                        type="text"
-                        name="coordinatorContactNo"
-                        value={editingEvent?.coordinatorContactNo || newEvent.coordinatorContactNo}
-                        onChange={handleInputChange}
-                        placeholder="Coordinator Contact No"
-                        required
-                        className="w-full px-4 py-3 bg-gray-800/60 border border-gray-700 rounded-lg text-white"
-                      />
-                      <input
-                        type="email"
-                        name="coordinatorMail"
-                        value={editingEvent?.coordinatorMail || newEvent.coordinatorMail}
-                        onChange={handleInputChange}
-                        placeholder="Coordinator Email"
-                        required
-                        className="w-full px-4 py-3 bg-gray-800/60 border border-gray-700 rounded-lg text-white"
-                      />
+                      <label className="block text-sm font-medium text-gray-300">Last Registration Date</label>
                       <input
                         type="datetime-local"
                         name="lastDateForRegistration"

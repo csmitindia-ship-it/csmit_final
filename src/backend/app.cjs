@@ -360,6 +360,8 @@ const transporter = nodemailer.createTransport({
 async function startServer() {
   await connectToDatabase();
 
+  const apiRouter = express.Router();
+
   // --- Routers ---
   const authRouter = require('./auth.cjs')(db, transporter);
   const eventsRouter = require('./events.cjs')(db, uploadEventPoster, transporter);
@@ -372,16 +374,18 @@ async function startServer() {
   const organizerRouter = require('./organizer.cjs')(db);
   const timerRouter = require('./timer.cjs')(db);
 
-  app.use('/auth', authRouter);
-  app.use('/events', eventsRouter);
-  app.use('/placements', placementsRouter);
-  app.use('/admin/accounts', accountsRouter);
-  app.use('/registrations', registrationsRouter);
-  app.use('/cart', cartRouter);
-  app.use('/verification', verificationRouter);
-  app.use('/symposium', symposiumRouter);
-  app.use('/organizers', organizerRouter);
-  app.use('/timer', timerRouter);
+  apiRouter.use('/auth', authRouter);
+  apiRouter.use('/events', eventsRouter);
+  apiRouter.use('/placements', placementsRouter);
+  apiRouter.use('/admin/accounts', accountsRouter);
+  apiRouter.use('/registrations', registrationsRouter);
+  apiRouter.use('/cart', cartRouter);
+  apiRouter.use('/verification', verificationRouter);
+  apiRouter.use('/symposium', symposiumRouter);
+  apiRouter.use('/organizers', organizerRouter);
+  apiRouter.use('/timer', timerRouter);
+  
+  app.use('/api', apiRouter);
 
   // --- Start Server ---
   app.use((req, res, next) => {

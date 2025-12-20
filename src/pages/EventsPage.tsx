@@ -10,6 +10,7 @@ import EventCountdown from '../components/EventCountdown';
 import WorkshopRegistrationModal from '../components/WorkshopRegistrationModal';
 import axios from 'axios';
 import API_BASE_URL from '../Config'; // adjust path if needed
+import { useLocation } from 'react-router-dom';
 
 interface Round {
   roundNumber: number;
@@ -57,6 +58,15 @@ const EventsPage: React.FC = () => {
   const [symposiumStatus, setSymposiumStatus] = useState<any[]>([]);
 
   const { user, isLoggedIn, loading: authLoading } = useAuth();
+  const location = useLocation();
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const symposium = params.get('symposium');
+    if (symposium === 'Enigma' || symposium === 'Carteblanche') {
+      setActiveSymposium(symposium);
+    }
+  }, [location.search]);
 
   const MIT_COLLEGE_NAME = "Madras Institute of Technology";
 

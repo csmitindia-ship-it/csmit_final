@@ -29,6 +29,7 @@ const AdminHeader: React.FC = () => {
     { label: 'Registration Status', onClick: () => { navigate('/admin/registration-status'); setIsMobileMenuOpen(false); } },
     { label: 'Update Winners', onClick: () => { navigate('/admin/update-winners'); setIsMobileMenuOpen(false); } },
     { label: 'Registered Users', onClick: () => { navigate('/admin/registered-users'); setIsMobileMenuOpen(false); } },
+    { label: 'View Organizers', onClick: () => { navigate('/admin/view-organizers'); setIsMobileMenuOpen(false); } },
   ];
 
   const desktopMenu = (
