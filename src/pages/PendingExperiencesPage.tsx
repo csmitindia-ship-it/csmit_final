@@ -6,12 +6,9 @@ import API_BASE_URL from '../Config';
 interface Experience {
   id: number;
   name: string;
-  email: string;
   type: 'Placement' | 'Intern';
   year_of_passing: number;
   company: string;
-  linkedin_url: string;
-  pdf_path: string;
   status: 'pending' | 'approved' | 'rejected';
 }
 

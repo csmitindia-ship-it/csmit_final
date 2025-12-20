@@ -8,11 +8,9 @@ interface ExperienceFormProps {
 
 const ExperienceForm: React.FC<ExperienceFormProps> = ({ onClose }) => {
   const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
   const [type, setType] = useState<'Placement' | 'Intern' | 'Off-Campus Placement' | 'Off-Campus Intern'>('Placement');
   const [year, setYear] = useState('');
   const [company, setCompany] = useState('');
-  const [linkedin, setLinkedin] = useState('');
   const [pdf, setPdf] = useState<File | null>(null);
 
   // State variables for the modal
@@ -40,11 +38,9 @@ const ExperienceForm: React.FC<ExperienceFormProps> = ({ onClose }) => {
 
     const formData = new FormData();
     formData.append('name', name);
-    formData.append('email', email);
     formData.append('type', type);
     formData.append('year', year);
     formData.append('company', company);
-    formData.append('linkedin', linkedin);
     formData.append('pdf', pdf);
 
     try {
@@ -61,8 +57,8 @@ const ExperienceForm: React.FC<ExperienceFormProps> = ({ onClose }) => {
         setIsModalOpen(true);
         // onClose() will be called after modal closes in handleCloseModal
       } else {
-        setModalTitle('Error');
-        setModalMessage(`Error: ${result.message}`);
+        setModalTitle('Limit');
+        setModalMessage(`Size: ${result.message}`);
         setIsModalOpen(true);
       }
     } catch (error) {
@@ -86,17 +82,6 @@ const ExperienceForm: React.FC<ExperienceFormProps> = ({ onClose }) => {
                 id="name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="w-full bg-gray-800/80 border border-purple-500/30 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
-                required
-              />
-            </div>
-            <div className="mb-4">
-              <label htmlFor="email" className="block text-purple-400 mb-2">Email</label>
-              <input
-                type="email"
-                id="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
                 className="w-full bg-gray-800/80 border border-purple-500/30 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
                 required
               />
@@ -135,16 +120,6 @@ const ExperienceForm: React.FC<ExperienceFormProps> = ({ onClose }) => {
                 onChange={(e) => setCompany(e.target.value)}
                 className="w-full bg-gray-800/80 border border-purple-500/30 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
                 required
-              />
-            </div>
-            <div className="mb-4">
-              <label htmlFor="linkedin" className="block text-purple-400 mb-2">LinkedIn URL</label>
-              <input
-                type="url"
-                id="linkedin"
-                value={linkedin}
-                onChange={(e) => setLinkedin(e.target.value)}
-                className="w-full bg-gray-800/80 border border-purple-500/30 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
               />
             </div>
           </div>

@@ -10,7 +10,7 @@ module.exports = function (db, upload) {
           return res.status(400).json({
             type: 'error',
             title: 'Upload Failed',
-            message: 'File size should not be more than 1MB.',
+            message: 'File exceeds 2 MB compress and upload',
           });
         }
       }
@@ -20,10 +20,10 @@ module.exports = function (db, upload) {
 
   // Submit new experience with PDF stored as blob
   router.post('/submit-experience', handleUpload, async (req, res) => {
-    const { name, email, type, year, company, linkedin } = req.body;
+    const { name, type, year, company } = req.body;
     const pdfBuffer = req.file ? req.file.buffer : null;
 
-    if (!name || !email || !type || !year || !company || !pdfBuffer) {
+    if (!name || !type || !year || !company || !pdfBuffer) {
       return res.status(400).json({
         type: 'warning',
         title: 'Missing Fields',
@@ -34,9 +34,9 @@ module.exports = function (db, upload) {
     try {
       await db.execute(
         `INSERT INTO experiences 
-         (name, email, type, year_of_passing, company, linkedin_url, pdf_file) 
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        [name, email, type, year, company, linkedin, pdfBuffer]
+         (name, type, year_of_passing, company, pdf_file) 
+         VALUES (?, ?, ?, ?, ?)`,
+        [name, type, year, company, pdfBuffer]
       );
       res.status(201).json({
         type: 'success',
@@ -57,7 +57,7 @@ module.exports = function (db, upload) {
   router.get('/experiences', async (req, res) => {
     try {
       const [rows] = await db.execute(
-        'SELECT id, name, email, type, year_of_passing, company, linkedin_url, status, createdAt FROM experiences ORDER BY company'
+        'SELECT id, name, type, year_of_passing, company, status, createdAt FROM experiences ORDER BY company'
       );
       res.json(rows);
     } catch (error) {
@@ -105,7 +105,7 @@ module.exports = function (db, upload) {
   router.get('/admin/pending-experiences', async (req, res) => {
     try {
       const [rows] = await db.execute(
-        'SELECT id, name, email, type, year_of_passing, company, linkedin_url, status FROM experiences WHERE status = ?',
+        'SELECT id, name, type, year_of_passing, company, status FROM experiences WHERE status = ?',
         ['pending']
       );
       res.json(rows);
@@ -122,7 +122,7 @@ module.exports = function (db, upload) {
   router.get('/admin/approved-experiences', async (req, res) => {
     try {
       const [rows] = await db.execute(
-        'SELECT id, name, email, type, year_of_passing, company, linkedin_url, status FROM experiences WHERE status = ?',
+        'SELECT id, name, type, year_of_passing, company, status FROM experiences WHERE status = ?',
         ['approved']
       );
       res.json(rows);

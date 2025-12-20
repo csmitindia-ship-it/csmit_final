@@ -46,7 +46,7 @@ const pdfStorage = multer.diskStorage({
 
 const eventPosterStorage = multer.memoryStorage();
 
-const uploadPdf = multer({ storage: multer.memoryStorage(), limits: { fileSize: 1 * 1024 * 1024 } });
+const uploadPdf = multer({ storage: multer.memoryStorage(), limits: { fileSize: 2 * 1024 * 1024 } });
 const uploadEventPoster = multer({ storage: eventPosterStorage, limits: { fileSize: 5 * 1024 * 1024 } });
 const uploadTransactionScreenshot = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } });
 
