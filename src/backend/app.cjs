@@ -97,11 +97,9 @@ async function createTablesIfNotExists() {
     CREATE TABLE IF NOT EXISTS experiences (
       id INT AUTO_INCREMENT PRIMARY KEY,
       name VARCHAR(255) NOT NULL,
-      email VARCHAR(255) NOT NULL,
-      type ENUM('Placement', 'Intern') NOT NULL,
+      type ENUM('Placement', 'Intern', 'Off-Campus Placement', 'Off-Campus Intern') NOT NULL,
       year_of_passing INT NOT NULL,
       company VARCHAR(255) NOT NULL,
-      linkedin_url VARCHAR(255),
       pdf_file LONGBLOB NOT NULL,
       status ENUM('pending', 'approved', 'rejected') DEFAULT 'pending',
       createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -237,6 +235,33 @@ async function createTablesIfNotExists() {
   try {
     await db.execute(createUserTableQuery);
     await db.execute(createExperienceTableQuery);
+
+    const [emailColumns] = await db.execute(`
+      SELECT COLUMN_NAME 
+      FROM INFORMATION_SCHEMA.COLUMNS 
+      WHERE TABLE_SCHEMA = 'csmit_db' 
+      AND TABLE_NAME = 'experiences' 
+      AND COLUMN_NAME = 'email'
+    `);
+
+    if (emailColumns.length > 0) {
+      await db.execute('ALTER TABLE experiences DROP COLUMN email');
+    }
+
+    const [linkedinColumns] = await db.execute(`
+      SELECT COLUMN_NAME 
+      FROM INFORMATION_SCHEMA.COLUMNS 
+      WHERE TABLE_SCHEMA = 'csmit_db' 
+      AND TABLE_NAME = 'experiences' 
+      AND COLUMN_NAME = 'linkedin_url'
+    `);
+
+    if (linkedinColumns.length > 0) {
+      await db.execute('ALTER TABLE experiences DROP COLUMN linkedin_url');
+    }
+
+    await db.execute("ALTER TABLE experiences MODIFY COLUMN type ENUM('Placement', 'Intern', 'Off-Campus Placement', 'Off-Campus Intern') NOT NULL");
+    
     await db.execute('DROP TABLE IF EXISTS events;');
     await db.execute(createEnigmaEventsTableQuery);
     await db.execute(createCarteBlancheEventsTableQuery);
