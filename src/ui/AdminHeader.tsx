@@ -21,6 +21,7 @@ const AdminHeader: React.FC = () => {
 
   const managementItems = [
     { label: 'Manage Events', onClick: () => { navigate('/admin/manage-events'); setIsMobileMenuOpen(false); } },
+    { label: 'Manage Accommodation', onClick: () => { navigate('/admin/manage-accommodation'); setIsMobileMenuOpen(false); } },
     { label: 'View Events', onClick: () => { navigate('/admin/events-display'); setIsMobileMenuOpen(false); } },
     { label: 'Pending Experiences', onClick: () => { navigate('/admin/pending-experiences'); setIsMobileMenuOpen(false); } },
     { label: 'Approved Experiences', onClick: () => { navigate('/admin/approved-experiences'); setIsMobileMenuOpen(false); } },
@@ -30,6 +31,9 @@ const AdminHeader: React.FC = () => {
     { label: 'Update Winners', onClick: () => { navigate('/admin/update-winners'); setIsMobileMenuOpen(false); } },
     { label: 'Registered Users', onClick: () => { navigate('/admin/registered-users'); setIsMobileMenuOpen(false); } },
     { label: 'View Organizers', onClick: () => { navigate('/admin/view-organizers'); setIsMobileMenuOpen(false); } },
+    { label: 'Manage Passes', onClick: () => { navigate('/admin/manage-passes'); setIsMobileMenuOpen(false); } },
+    { label: 'Register User', onClick: () => { navigate('/admin/register-user'); setIsMobileMenuOpen(false); } },
+    { label: 'Verify Transaction', onClick: () => { navigate('/admin/verify-transaction'); setIsMobileMenuOpen(false); } },
   ];
 
   const desktopMenu = (

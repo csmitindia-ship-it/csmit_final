@@ -76,6 +76,60 @@ module.exports = (db, uploadPdf) => {
     }
   });
 
+  // Get account details for a specific pass
+  router.get('/pass/:passId', async (req, res) => {
+    const { passId } = req.params;
+    console.log(`GET /accounts/pass/${passId} - Fetching account for pass...`);
+
+    try {
+      // First, find the accountId linked to the passId
+      const [passAccount] = await db.execute('SELECT accountId FROM passes WHERE id = ?', [passId]);
+      
+      if (passAccount.length === 0) {
+        console.warn(`No account mapping found for passId: ${passId}`);
+        return res.status(404).json({ message: 'Account for this pass not found.' });
+      }
+
+      const accountId = passAccount[0].accountId;
+      console.log(`Found mapping: passId ${passId} -> accountId ${accountId}. Fetching details...`);
+
+      // Now, fetch the account details using the found accountId
+      const [account] = await db.execute('SELECT id, accountName, bankName, accountNumber, ifscCode, qrCodePdf FROM accounts WHERE id = ?', [accountId]);
+      
+      if (account.length === 0) {
+        console.warn(`Account details not found for accountId: ${accountId} (linked to passId: ${passId})`);
+        return res.status(404).json({ message: 'Account details not found.' });
+      }
+
+      console.log(`Successfully fetched account details for passId: ${passId}`);
+      res.status(200).json(account[0]);
+    } catch (error) {
+      console.error(`Error fetching account for pass ${passId}:`, error);
+      res.status(500).json({ message: 'Internal server error' });
+    }
+  });
+
+  // Get account details by ID
+  router.get('/:id', async (req, res) => {
+    const { id } = req.params;
+    console.log(`GET /accounts/${id} - Fetching account by ID...`);
+
+    try {
+        const [account] = await db.execute('SELECT id, accountName, bankName, accountNumber, ifscCode, qrCodePdf FROM accounts WHERE id = ?', [id]);
+        
+        if (account.length === 0) {
+            console.warn(`Account details not found for accountId: ${id}`);
+            return res.status(404).json({ message: 'Account details not found.' });
+        }
+
+        console.log(`Successfully fetched account details for accountId: ${id}`);
+        res.status(200).json(account[0]);
+    } catch (error) {
+        console.error(`Error fetching account for ID ${id}:`, error);
+        res.status(500).json({ message: 'Internal server error' });
+    }
+  });
+
   // Update account details
   router.put('/:id', uploadPdf.single('qrCodePdf'), async (req, res) => {
     const { id } = req.params;

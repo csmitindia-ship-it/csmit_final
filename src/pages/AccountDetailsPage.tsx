@@ -44,7 +44,7 @@ const AccountDetailsPage: React.FC = () => {
 
   const fetchAccountDetails = async () => {
     try {
-      const response = await axios.get(`${API_BASE_URL}/admin/accounts`);
+      const response = await axios.get(`${API_BASE_URL}/accounts`);
       setAccountDetails(response.data);
     } catch (err) {
       showModal('Error', 'Failed to fetch account details. Please try again later.');
@@ -68,8 +68,8 @@ const AccountDetailsPage: React.FC = () => {
 
     try {
       const url = editingId
-        ? `${API_BASE_URL}/admin/accounts/${editingId}`
-        : `${API_BASE_URL}/admin/accounts`;
+        ? `${API_BASE_URL}/accounts/${editingId}`
+        : `${API_BASE_URL}/accounts`;
       const method = editingId ? 'put' : 'post';
 
       await axios[method](url, formData, {
@@ -105,7 +105,7 @@ const AccountDetailsPage: React.FC = () => {
   const confirmDelete = async () => {
     if (deletingId === null) return;
     try {
-      await axios.delete(`${API_BASE_URL}/admin/accounts/${deletingId}`);
+      await axios.delete(`${API_BASE_URL}/accounts/${deletingId}`);
       showModal('Success', 'Account details deleted successfully!');
       fetchAccountDetails();
     } catch (err) {

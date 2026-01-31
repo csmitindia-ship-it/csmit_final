@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import API_BASE_URL from '../Config'; // adjust path if needed
-
 import axios from 'axios';
+import { useAuth } from '../context/AuthContext';
 
 interface CartItem {
   cartId: number;
-  eventId: number;
-  symposiumName: string;
-  eventDetails: {
+  type: 'event' | 'pass' | 'accommodation';
+  eventId?: number;
+  passId?: number;
+  symposiumName?: string;
+  eventDetails?: {
     eventName: string;
     eventCategory: string;
     eventDescription: string;
@@ -15,7 +17,20 @@ interface CartItem {
     lastDateForRegistration: string;
     coordinatorName: string;
     coordinatorContactNo: string;
+    discountPercentage?: number;
+    discountReason?: string;
   };
+  passDetails?: {
+    name: string;
+    cost: number;
+    description: string;
+  };
+  accommodationDetails?: {
+    name: string;
+    cost: number;
+    quantity: number;
+  };
+  gender?: 'male' | 'female';
 }
 
 interface AccountDetails {
@@ -27,46 +42,95 @@ interface AccountDetails {
 }
 
 interface WorkshopRegistrationFormProps {
-  userId: number;
-  userName: string;
-  userEmail: string;
-  paidEvents: CartItem[];
+  cartItems: CartItem[]; // Updated prop name to match CartPage
   onRegistrationSuccess: () => void;
   onCancel: () => void;
 }
 
-const WorkshopRegistrationForm: React.FC<WorkshopRegistrationFormProps> = ({ userId, userName, paidEvents, onRegistrationSuccess, onCancel }) => {
+const WorkshopRegistrationForm: React.FC<WorkshopRegistrationFormProps> = ({ 
+  cartItems, 
+  onRegistrationSuccess, 
+  onCancel 
+}) => {
+  const { user } = useAuth();
   const [transactionId, setTransactionId] = useState('');
   const [mobileNumber, setMobileNumber] = useState('');
+  const [transactionDate, setTransactionDate] = useState('');
+  const [transactionTime, setTransactionTime] = useState('');
   const [transactionScreenshot, setTransactionScreenshot] = useState<File | null>(null);
   const [accountDetails, setAccountDetails] = useState<AccountDetails | null>(null);
   const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const totalAmount = paidEvents.reduce((sum, item) => sum + item.eventDetails.registrationFees, 0);
+
+  // Calculate Total Amount with Discount
+  const totalAmount = (cartItems || []).reduce((sum, item) => {
+    if (item.type === 'event' && item.eventDetails) {
+      const original = item.eventDetails.registrationFees;
+      const discount = item.eventDetails.discountPercentage || 0;
+      const discountedPrice = Math.floor(original * (1 - discount / 100));
+      return sum + discountedPrice;
+    } else if (item.type === 'pass' && item.passDetails) {
+      return sum + item.passDetails.cost;
+    } else if (item.type === 'accommodation' && item.accommodationDetails) {
+        return sum + (item.accommodationDetails.cost * item.accommodationDetails.quantity);
+    }
+    return sum;
+  }, 0);
 
   useEffect(() => {
     const fetchAccountDetails = async () => {
-      if (paidEvents.length === 0) return;
+      if (!cartItems || cartItems.length === 0) return;
+      const accommodationItem = cartItems.find(item => item.type === 'accommodation');
+      const events = cartItems.filter(item => item.type === 'event' && item.eventDetails);
+      let accountIdToFetch: number | undefined;
 
-      const eventWithHighestFee = paidEvents.reduce((max, event) =>
-        event.eventDetails.registrationFees > max.eventDetails.registrationFees ? event : max, paidEvents[0]
-      );
-
-      try {
-        const response = await axios.get(`${API_BASE_URL}/admin/accounts/event/${eventWithHighestFee.eventId}`);
-        if (response.data) {
-          setAccountDetails(response.data);
-        } else {
-          setError('Could not fetch account details. Please make sure an account is associated with the event.');
+      if (accommodationItem) {
+        try {
+          const accomResponse = await axios.get(`${API_BASE_URL}/accommodation`);
+          const accomData = accomResponse.data;
+          const genderAccommodation = accomData.find((a: any) => a.gender === accommodationItem.gender);
+          if (genderAccommodation && genderAccommodation.accountId) {
+            accountIdToFetch = genderAccommodation.accountId;
+          }
+        } catch (error) {
+          console.error('Error fetching accommodation details:', error);
         }
-      } catch (error) {
-        console.error('Error fetching account details:', error);
-        setError('Could not fetch account details. Please make sure an account is associated with the event.');
+      }
+
+      if (!accountIdToFetch && events.length > 0) {
+        const eventWithHighestFee = events.reduce((max, event) => {
+           const maxFee = max.eventDetails?.registrationFees || 0;
+           const currFee = event.eventDetails?.registrationFees || 0;
+           return currFee > maxFee ? event : max;
+        }, events[0]);
+        if (eventWithHighestFee && eventWithHighestFee.eventId) {
+            const response = await axios.get(`${API_BASE_URL}/accounts/event/${eventWithHighestFee.eventId}`);
+            if (response.data) {
+                setAccountDetails(response.data);
+            }
+            return;
+        }
+      }
+
+      if (accountIdToFetch) {
+        try {
+          const response = await axios.get(`${API_BASE_URL}/accounts/${accountIdToFetch}`);
+          if (response.data) {
+            setAccountDetails(response.data);
+          } else {
+            setError('Could not fetch account details for accommodation.');
+          }
+        } catch (error) {
+          console.error('Error fetching account details for accommodation:', error);
+          setError('Could not fetch account details for accommodation.');
+        }
+      } else if (events.length === 0) {
+        setError('No account details could be fetched. Please add an event or accommodation with an associated account to your cart.');
       }
     };
 
     fetchAccountDetails();
-  }, [paidEvents]);
+  }, [cartItems]);
 
   useEffect(() => {
     if (accountDetails && accountDetails.qrCodePdf) {
@@ -94,19 +158,34 @@ const WorkshopRegistrationForm: React.FC<WorkshopRegistrationFormProps> = ({ use
       return;
     }
 
+    if (!user) {
+      alert('You must be logged in to register.');
+      return;
+    }
+
     try {
       const formData = new FormData();
-      formData.append('userId', userId.toString());
-      const eventIds = paidEvents.map(item => item.eventId);
+      formData.append('userId', user.id.toString());
+      
+      const eventIds = cartItems.filter(item => item.type === 'event').map(item => item.eventId);
+      const passIds = cartItems.filter(item => item.type === 'pass').map(item => item.passId);
+      const accommodationItem = cartItems.find(item => item.type === 'accommodation');
+
+      if (accommodationItem) {
+        formData.append('accommodation', JSON.stringify(accommodationItem));
+      }
+      
       formData.append('eventIds', JSON.stringify(eventIds));
+      formData.append('passIds', JSON.stringify(passIds));
+      
       formData.append('transactionId', transactionId);
-      formData.append('transactionUsername', userName);
-      formData.append('transactionTime', new Date().toLocaleTimeString());
-      formData.append('transactionDate', new Date().toLocaleDateString());
+      formData.append('transactionTime', transactionTime);
+      formData.append('transactionDate', transactionDate);
       formData.append('transactionAmount', totalAmount.toString());
       formData.append('mobileNumber', mobileNumber);
       formData.append('transactionScreenshot', transactionScreenshot);
 
+      // Main registration for events and passes
       await axios.post(`${API_BASE_URL}/registrations`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
@@ -125,21 +204,61 @@ const WorkshopRegistrationForm: React.FC<WorkshopRegistrationFormProps> = ({ use
       <h2 className="text-3xl font-bold text-white text-center mb-8">Registration</h2>
       {error && <p className="text-red-500 text-center mb-4">{error}</p>}
       <div className="grid md:grid-cols-2 gap-8">
-        {/* Left Column: Event Details */}
+        {/* Left Column: Order Summary */}
         <div className="bg-gray-800/70 p-6 rounded-lg">
           <h3 className="text-xl font-semibold text-purple-300 mb-4">Order Summary</h3>
-          <div className="space-y-2 mb-4">
-            {paidEvents.map(item => (
-              <div key={item.cartId} className="flex justify-between text-gray-300">
-                <span>{item.eventDetails.eventName}</span>
-                <span>₹{item.eventDetails.registrationFees}</span>
-              </div>
-            ))}
+          <div className="space-y-4 mb-4">
+            {cartItems && cartItems.map(item => {
+              if (item.type === 'event' && item.eventDetails) {
+                 const originalPrice = item.eventDetails.registrationFees;
+                 const discount = item.eventDetails.discountPercentage || 0;
+                 const discountedPrice = Math.floor(originalPrice * (1 - discount / 100));
+
+                 return (
+                  <div key={item.cartId} className="flex justify-between items-center text-gray-300 border-b border-gray-700 pb-2 last:border-0">
+                    <div>
+                      <span className="block font-medium">{item.eventDetails.eventName}</span>
+                      {discount > 0 && (
+                        <span className="text-xs text-yellow-500">{discount}% Off Applied</span>
+                      )}
+                    </div>
+                    <div className="text-right">
+                      {discount > 0 ? (
+                        <>
+                          <span className="block text-xs line-through text-red-400">₹{originalPrice}</span>
+                          <span className="block text-green-400 font-bold">₹{discountedPrice}</span>
+                        </>
+                      ) : (
+                        <span>₹{originalPrice}</span>
+                      )}
+                    </div>
+                  </div>
+                 );
+              } else if (item.type === 'pass' && item.passDetails) {
+                 return (
+                  <div key={item.cartId} className="flex justify-between items-center text-gray-300 border-b border-gray-700 pb-2 last:border-0">
+                    <span className="font-medium">{item.passDetails.name}</span>
+                    <span>₹{item.passDetails.cost}</span>
+                  </div>
+                 );
+              } else if (item.type === 'accommodation' && item.accommodationDetails) {
+                return (
+                 <div key={item.cartId} className="flex justify-between items-center text-gray-300 border-b border-gray-700 pb-2 last:border-0">
+                    <div>
+                        <span className="font-medium">{item.accommodationDetails.name}</span>
+                        <span className="block text-xs text-gray-400">Quantity: {item.accommodationDetails.quantity}</span>
+                    </div>
+                   <span>₹{item.accommodationDetails.cost * item.accommodationDetails.quantity}</span>
+                 </div>
+                );
+             }
+              return null;
+            })}
           </div>
           <hr className="border-gray-700 my-4" />
           <div className="flex justify-between text-white font-bold text-lg">
             <span>Total Amount</span>
-            <span>₹{totalAmount}</span>
+            <span className="text-green-400">₹{totalAmount}</span>
           </div>
         </div>
 
@@ -148,24 +267,28 @@ const WorkshopRegistrationForm: React.FC<WorkshopRegistrationFormProps> = ({ use
           {accountDetails ? (
             <div className="mb-6">
               <h3 className="text-xl font-semibold text-purple-300 mb-4">Payment Information</h3>
-              <div className="bg-gray-900/50 p-4 rounded-lg border border-gray-700">
+              <div className="bg-gray-900/50 p-4 rounded-lg border border-gray-700 text-sm">
                 <p><strong>Account Name:</strong> {accountDetails.accountName}</p>
                 <p><strong>Bank Name:</strong> {accountDetails.bankName}</p>
                 <p><strong>Account Number:</strong> {accountDetails.accountNumber}</p>
                 <p><strong>IFSC Code:</strong> {accountDetails.ifscCode}</p>
               </div>
               {qrCodeUrl && (
-                <div className="mt-4">
-                  <object data={qrCodeUrl} type="application/pdf" width="100%" height="500px">
-                    <p>Your browser does not support PDFs. <a href={qrCodeUrl}>Download the PDF</a>.</p>
+                <div className="mt-4 flex justify-center">
+                  <object data={qrCodeUrl} type="application/pdf" width="200px" height="200px" className="rounded-lg overflow-hidden border border-white">
+                     <p>Your browser does not support PDFs. <a href={qrCodeUrl} target="_blank" rel="noreferrer" className="text-blue-400 underline">View QR Code</a></p>
                   </object>
                 </div>
               )}
 
-              <p className="text-sm text-gray-400 mt-2">Please transfer the total amount to this account and enter the transaction ID below.</p>
+              <p className="text-sm text-gray-400 mt-4 bg-yellow-900/20 p-2 rounded border border-yellow-700/50">
+                Please transfer <strong>₹{totalAmount}</strong> to the account above and upload the screenshot below.
+              </p>
             </div>
           ) : (
-            <p>Loading account details...</p>
+             <div className="flex items-center justify-center h-40">
+                <p className="text-gray-400 animate-pulse">Loading account details...</p>
+             </div>
           )}
 
           <form onSubmit={handleSubmit}>
@@ -178,7 +301,36 @@ const WorkshopRegistrationForm: React.FC<WorkshopRegistrationFormProps> = ({ use
                 onChange={(e) => setMobileNumber(e.target.value)}
                 className="w-full px-4 py-3 bg-gray-700/60 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all duration-300"
                 required
+                placeholder="Enter your mobile number"
               />
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="transactionDate" className="block text-sm font-medium text-gray-400 mb-2">
+                  Transaction Date
+                </label>
+                <input
+                  type="date"
+                  id="transactionDate"
+                  className="w-full px-4 py-3 bg-gray-700/60 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all duration-300"
+                  value={transactionDate}
+                  onChange={(e) => setTransactionDate(e.target.value)}
+                  required
+                />
+              </div>
+              <div>
+                <label htmlFor="transactionTime" className="block text-sm font-medium text-gray-400 mb-2">
+                  Transaction Time
+                </label>
+                <input
+                  type="time"
+                  id="transactionTime"
+                  className="w-full px-4 py-3 bg-gray-700/60 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all duration-300"
+                  value={transactionTime}
+                  onChange={(e) => setTransactionTime(e.target.value)}
+                  required
+                />
+              </div>
             </div>
             <div className="mb-4">
               <label htmlFor="transactionId" className="block text-sm font-medium text-gray-400 mb-2">Transaction ID</label>
@@ -189,24 +341,25 @@ const WorkshopRegistrationForm: React.FC<WorkshopRegistrationFormProps> = ({ use
                 onChange={(e) => setTransactionId(e.target.value)}
                 className="w-full px-4 py-3 bg-gray-700/60 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all duration-300"
                 required
+                placeholder="Enter UPI / Bank Transaction ID"
               />
             </div>
-            <div className="mb-4">
+            <div className="mb-6">
               <label htmlFor="transactionScreenshot" className="block text-sm font-medium text-gray-400 mb-2">Transaction Screenshot</label>
               <input
                 type="file"
                 id="transactionScreenshot"
                 onChange={handleFileChange}
                 className="w-full px-4 py-3 bg-gray-700/60 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all duration-300"
-                accept="image/jpeg,image/png"
+                accept="image/jpeg,image/png,application/pdf"
                 required
               />
             </div>
             <div className="flex gap-4">
-              <button type="button" onClick={onCancel} className="w-full px-4 py-3 bg-gray-600 text-white font-semibold rounded-lg hover:bg-gray-700 transition-transform duration-300">
+              <button type="button" onClick={onCancel} className="w-1/3 px-4 py-3 bg-gray-600 text-white font-semibold rounded-lg hover:bg-gray-700 transition-transform duration-300">
                 Cancel
               </button>
-              <button type="submit" className="w-full px-4 py-3 bg-purple-600 text-white font-semibold rounded-lg hover:bg-purple-700 transition-transform duration-300 shadow-lg glow-button">
+              <button type="submit" className="w-2/3 px-4 py-3 bg-purple-600 text-white font-semibold rounded-lg hover:bg-purple-700 transition-transform duration-300 shadow-lg glow-button">
                 Complete Registration
               </button>
             </div>

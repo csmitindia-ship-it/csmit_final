@@ -30,6 +30,11 @@ import OrganizerHeader from "./ui/OrganizerHeader";
 import OrganizerProtectedRoute from "./OrganizerProtectedRoute.tsx";
 import RegisteredUsers from "./pages/ViewActiveUsersPage.tsx";
 import ViewOrganizersPage from "./pages/ViewOrganizersPage";
+import ManagePassesPage from "./pages/ManagePassesPage.tsx";
+import ManageAccommodationPage from "./pages/ManageAccommodationPage.tsx";
+import AccommodationPage from "./pages/AccommodationPage.tsx";
+import AdminUserRegistrationPage from "./pages/AdminUserRegistrationPage.tsx";
+import VerifyTransactionPage from "./pages/VerifyTransactionPage.tsx";
 
 export default function App() {
   const [showIntro, setShowIntro] = useState(sessionStorage.getItem("introSeen") !== "true");
@@ -118,6 +123,7 @@ export default function App() {
           <Route path="/admin" element={<AdminPage />}>
             <Route index element={<Navigate to="manage-events" replace />} />
             <Route path="manage-events" element={<ManageEventsPage />} />
+            <Route path="manage-accommodation" element={<ManageAccommodationPage />} />
             <Route path="pending-experiences" element={<PendingExperiencesPage />} />
             <Route path="approved-experiences" element={<ApprovedExperiencesPage />} />
             <Route path="events-display" element={<AdminEventsDisplayPage />} />
@@ -128,6 +134,9 @@ export default function App() {
             <Route path="update-winners" element={<UpdateWinnersPage />} />
             <Route path="registered-users" element={<RegisteredUsers />} />
             <Route path="view-organizers" element={<ViewOrganizersPage />} />
+            <Route path="manage-passes" element={<ManagePassesPage />} />
+            <Route path="register-user" element={<AdminUserRegistrationPage />} />
+            <Route path="verify-transaction" element={<VerifyTransactionPage />} />
           </Route>
         </Route>
 
@@ -168,6 +177,7 @@ export default function App() {
           <Route path="/registration" element={<RegistrationPage />} />
           <Route path="/cart" element={<CartPage />} />
           <Route path="/enrolled-events" element={<EnrolledEventsPage />} />
+          <Route path="/accommodation" element={<AccommodationPage />} />
         </Route>
 
         {/* Catch-all route for unmatched paths */}

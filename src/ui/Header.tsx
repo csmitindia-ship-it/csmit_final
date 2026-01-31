@@ -29,7 +29,9 @@ const Header: React.FC<HeaderProps> = ({ setIsLoginModalOpen, setIsSignUpModalOp
       try {
         const response = await fetch(`${API_BASE_URL}/symposium/status`);
         const data = await response.json();
-        setSymposiumStatus(data);
+        if (data) {
+          setSymposiumStatus(data);
+        }
       } catch (error) {
         console.error("Error fetching symposium status:", error);
         setModalTitle("Error");
@@ -47,7 +49,9 @@ const Header: React.FC<HeaderProps> = ({ setIsLoginModalOpen, setIsSignUpModalOp
       navigate(`/${targetId}`);
     } else {
       const element = document.getElementById(targetId.substring(1));
-      if (element) element.scrollIntoView({ behavior: "smooth" });
+      if (element) {
+        element.scrollIntoView({ behavior: "smooth" });
+      }
     }
   };
 
@@ -64,13 +68,15 @@ const Header: React.FC<HeaderProps> = ({ setIsLoginModalOpen, setIsSignUpModalOp
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ symposiumName, startDate: date }),
       });
-      if (response.ok) {
+      if (response && response.ok) {
         setModalTitle("Success");
         setModalMessage(`Successfully started ${symposiumName}.`);
         setIsModalOpen(true);
         const statusResponse = await fetch(`${API_BASE_URL}/symposium/stop`);
         const data = await statusResponse.json();
-        setSymposiumStatus(data);
+        if (data) {
+          setSymposiumStatus(data);
+        }
       } else {
         setModalTitle("Error");
         setModalMessage(`Failed to start ${symposiumName}.`);
@@ -91,13 +97,15 @@ const Header: React.FC<HeaderProps> = ({ setIsLoginModalOpen, setIsSignUpModalOp
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ symposiumName }),
       });
-      if (response.ok) {
+      if (response && response.ok) {
         setModalTitle("Success");
         setModalMessage(`${symposiumName} has been stopped.`);
         setIsModalOpen(true);
         const statusResponse = await fetch("/api/symposium/status");
         const data = await statusResponse.json();
-        setSymposiumStatus(data);
+        if (data) {
+          setSymposiumStatus(data);
+        }
       } else {
         setModalTitle("Error");
         setModalMessage(`Failed to stop ${symposiumName}.`);
@@ -207,6 +215,19 @@ const Header: React.FC<HeaderProps> = ({ setIsLoginModalOpen, setIsSignUpModalOp
           className="text-white hover:text-purple-400 transition block py-2 md:py-0"
         >
           Cart
+        </a>
+      )}
+      {user && (
+        <a
+          href="/accommodation"
+          onClick={(e) => {
+            e.preventDefault();
+            navigate("/accommodation");
+            if (isMobileMenuOpen) setIsMobileMenuOpen(false);
+          }}
+          className="text-white hover:text-purple-400 transition block py-2 md:py-0"
+        >
+          Accommodation
         </a>
       )}
     </>

@@ -42,6 +42,7 @@ import aravinth from './Photos/aravinth.jpeg';
 import HomePageGallery from './components/HomePageGallery';
 import CsmitLogo from './Photos/Logo.png';
 import RegistrationTimer from './components/RegistrationTimer';
+import PassesDisplay from './components/PassesDisplay';
 
 // --- Data for different sections ---
 
@@ -341,8 +342,7 @@ export default function HomePage() {
                     </div>
                 </div>
             </section>
-            {/* Why Join CSMIT */}
-              <section id="why-join" className="py-20 px-4 sm:px-6 lg:px-8">
+            <section id="why-join" className="py-20 px-4 sm:px-6 lg:px-8">
                 <div className="max-w-5xl mx-auto text-center bg-gray-900/70 backdrop-blur-md border border-purple-500/30 p-8 rounded-lg">
                   <h2 className="text-3xl font-bold mb-6 text-white">Why Join CSMIT?</h2>
                   <ul className="text-left text-lg text-gray-300 space-y-4 list-disc list-inside">
@@ -374,7 +374,7 @@ export default function HomePage() {
                 </div>
               </section>
 
-            
+            <PassesDisplay />
 
             <section id="sponsors" className="py-20">
               <h2 className="text-3xl font-bold text-center mb-12 text-white">Our Valued Sponsors</h2>

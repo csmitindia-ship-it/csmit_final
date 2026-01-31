@@ -68,6 +68,15 @@ const RegistrationPage: React.FC = () => {
     setIsForgotPasswordModalOpen(true);
   };
 
+  const handleRegistrationSuccess = () => {
+    setIsRegistered(true);
+    alert('Registration successful!');
+  };
+
+  const handleCancel = () => {
+    window.history.back();
+  };
+
   if (!user) {
     return (
       <div className="min-h-screen bg-gray-900 text-white p-8 flex flex-col items-center justify-center">
@@ -133,13 +142,16 @@ const RegistrationPage: React.FC = () => {
           {event && (
             <>
               {symposium === 'Enigma' && event.eventCategory === 'Workshop' ? (
-                <WorkshopRegistrationForm 
-                  workshop={event}
-                  userName={user.name || ''}
-                  userEmail={user.email}
-                  symposium={symposium}
-                  eventId={eventId || ''}
-                  registrationFee={event.registrationFees}
+                <WorkshopRegistrationForm
+                  cartItems={[{
+                    cartId: parseInt(eventId, 10),
+                    type: 'event',
+                    eventId: parseInt(eventId, 10),
+                    symposiumName: symposium,
+                    eventDetails: event
+                  }]}
+                  onRegistrationSuccess={handleRegistrationSuccess}
+                  onCancel={handleCancel}
                 />
               ) : (
                 <GeneralRegistrationForm 

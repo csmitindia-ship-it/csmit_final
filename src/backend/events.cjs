@@ -74,14 +74,50 @@ module.exports = function(db, uploadEventPoster, transporter) {
       res.status(500).json({ message: 'Failed to add event.' });
     }
   });
+router.post('/apply-discount', async (req, res) => {
+    const { symposiumName, eventCategory, discountPercentage, discountReason, isForMIT } = req.body;
 
+    if (!symposiumName || !eventCategory || discountPercentage === undefined) {
+      return res.status(400).json({ message: 'Missing required fields.' });
+    }
+
+    let eventTable;
+    if (symposiumName === 'Enigma') {
+      eventTable = 'enigma_events';
+    } else if (symposiumName === 'Carteblanche') {
+      eventTable = 'carte_blanche_events';
+    } else {
+      return res.status(400).json({ message: 'Invalid symposium name.' });
+    }
+
+    try {
+      if (isForMIT) {
+        await db.execute(
+          `UPDATE ${eventTable} SET mit_discount_percentage = ? WHERE eventCategory = ?`,
+          [discountPercentage, eventCategory]
+        );
+      } else {
+        await db.execute(
+          `UPDATE ${eventTable} SET discountPercentage = ?, discountReason = ? WHERE eventCategory = ?`,
+          [discountPercentage, discountReason || '', eventCategory]
+        );
+      }
+      res.status(200).json({ message: 'Discounts updated successfully.' });
+    } catch (error) {
+      console.error('Error applying discount:', error);
+      res.status(500).json({ message: 'Failed to apply discount.' });
+    }
+  });
+
+  // [UPDATED] Get all events (Include discount columns in SELECT)
   router.get('/', async (req, res) => {
     try {
-      const [enigmaEvents] = await db.execute('SELECT id, eventName, eventCategory, eventDescription, numberOfRounds, teamOrIndividual, location, registrationFees, coordinatorName, coordinatorContactNo, coordinatorMail, lastDateForRegistration, posterImage,open_to_non_mit, createdAt FROM enigma_events');
-      const [carteBlancheEvents] = await db.execute('SELECT id, eventName, eventCategory, eventDescription, numberOfRounds, teamOrIndividual, location, registrationFees, coordinatorName, coordinatorContactNo, coordinatorMail, lastDateForRegistration, posterImage,open_to_non_mit, createdAt FROM carte_blanche_events');
+      // Added discountPercentage and discountReason to the SELECT query
+      const [enigmaEvents] = await db.execute('SELECT id, eventName, eventCategory, eventDescription, numberOfRounds, teamOrIndividual, location, registrationFees, coordinatorName, coordinatorContactNo, coordinatorMail, lastDateForRegistration, posterImage, open_to_non_mit, discountPercentage, discountReason, mit_discount_percentage, createdAt FROM enigma_events');
+      const [carteBlancheEvents] = await db.execute('SELECT id, eventName, eventCategory, eventDescription, numberOfRounds, teamOrIndividual, location, registrationFees, coordinatorName, coordinatorContactNo, coordinatorMail, lastDateForRegistration, posterImage, open_to_non_mit, discountPercentage, discountReason, mit_discount_percentage, createdAt FROM carte_blanche_events');
 
       const allEvents = [];
-
+      // ... (Rest of the loop logic remains the same) ...
       for (const event of enigmaEvents) {
         if (event.posterImage) {
           event.posterImage = event.posterImage.toString('base64');
@@ -100,42 +136,36 @@ module.exports = function(db, uploadEventPoster, transporter) {
 
       res.json(allEvents);
     } catch (error) {
+      // ... existing error handling
       console.error('Error fetching events:', error);
       res.status(500).json({ message: 'Failed to fetch events.' });
     }
   });
 
+  // [UPDATED] Get specific event (Include discount columns in SELECT)
   router.get('/:id', async (req, res) => {
+     // ... existing setup ...
     const { id } = req.params;
     const { symposium } = req.query;
-
-    if (!symposium) {
-      return res.status(400).json({ message: 'Symposium name is required.' });
-    }
-
+    
+    // ... existing table selection logic ...
     let eventTable;
-    if (symposium === 'Enigma') {
-      eventTable = 'enigma_events';
-    } else if (symposium === 'Carteblanche') {
-      eventTable = 'carte_blanche_events';
-    } else {
-      return res.status(400).json({ message: 'Invalid symposium name.' });
-    }
+    if (symposium === 'Enigma') { eventTable = 'enigma_events'; } 
+    else if (symposium === 'Carteblanche') { eventTable = 'carte_blanche_events'; }
+    else { return res.status(400).json({ message: 'Invalid symposium name.' }); }
 
     try {
       const [rows] = await db.execute(`SELECT * FROM ${eventTable} WHERE id = ?`, [id]);
-      if (rows.length === 0) {
-        return res.status(404).json({ message: 'Event not found.' });
-      }
+      // ... rest of the function remains the same
+      if (rows.length === 0) { return res.status(404).json({ message: 'Event not found.' }); }
       const event = rows[0];
-      if (event.posterImage) {
-        event.posterImage = event.posterImage.toString('base64');
-      }
+      if (event.posterImage) { event.posterImage = event.posterImage.toString('base64'); }
       res.json(event);
     } catch (error) {
       res.status(500).json({ message: 'Failed to fetch event.' });
     }
   });
+
 
   router.get('/:eventId/registrations', async (req, res) => {
     const { eventId } = req.params;

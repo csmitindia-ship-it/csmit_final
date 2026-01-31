@@ -49,7 +49,7 @@ const GeneralRegistrationForm: React.FC<GeneralRegistrationFormProps> = ({ event
     setLoading(true);
     setError(null);
     try {
-      const response = await axios.get(`${API_BASE_URL}/admin/accounts/event/${eventId}`);
+      const response = await axios.get(`${API_BASE_URL}/accounts/event/${eventId}`);
       if (response.data) {
         setAccountDetails(response.data);
       } else {

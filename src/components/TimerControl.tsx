@@ -1,9 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import API_BASE_URL from '../Config'; // adjust path if needed
+import ThemedModal from './ThemedModal';
 
 const TimerControl: React.FC = () => {
   const [endTime, setEndTime] = useState('');
   const [activeTimer, setActiveTimer] = useState<any>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalTitle, setModalTitle] = useState('');
+  const [modalMessage, setModalMessage] = useState('');
 
   const fetchTimer = async () => {
     try {
@@ -32,14 +36,20 @@ const TimerControl: React.FC = () => {
       });
 
       if (response.ok) {
-        alert('Timer started successfully!');
+        setModalTitle('Success');
+        setModalMessage('Timer started successfully!');
+        setIsModalOpen(true);
         fetchTimer();
       } else {
-        alert('Failed to start timer.');
+        setModalTitle('Error');
+        setModalMessage('Failed to start timer.');
+        setIsModalOpen(true);
       }
     } catch (error) {
       console.error('Error starting timer:', error);
-      alert('An error occurred while starting the timer.');
+      setModalTitle('Error');
+      setModalMessage('An error occurred while starting the timer.');
+      setIsModalOpen(true);
     }
   };
 
@@ -50,19 +60,31 @@ const TimerControl: React.FC = () => {
       });
 
       if (response.ok) {
-        alert('Timer stopped successfully!');
+        setModalTitle('Success');
+        setModalMessage('Timer stopped successfully!');
+        setIsModalOpen(true);
         setActiveTimer(null);
       } else {
-        alert('Failed to stop timer.');
+        setModalTitle('Error');
+        setModalMessage('Failed to stop timer.');
+        setIsModalOpen(true);
       }
     } catch (error) {
       console.error('Error stopping timer:', error);
-      alert('An error occurred while stopping the timer.');
+      setModalTitle('Error');
+      setModalMessage('An error occurred while stopping the timer.');
+      setIsModalOpen(true);
     }
   };
 
   return (
     <div className="p-4 border rounded-lg shadow-md">
+      <ThemedModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        title={modalTitle}
+        message={modalMessage}
+      />
       <h2 className="text-xl font-bold mb-4">Registration Timer</h2>
       {activeTimer ? (
         <div>

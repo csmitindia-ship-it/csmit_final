@@ -94,6 +94,7 @@ const ThemedModal: React.FC<{
     document.body
   );
 };
+
 const Loader: React.FC = () => (
   <div className="flex justify-center items-center h-full">
     <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-purple-500"></div>
@@ -152,9 +153,19 @@ const App: React.FC = () => {
   const [isAssignAccountModalOpen, setIsAssignAccountModalOpen] = useState(false);
   const [organizers, setOrganizers] = useState<Organizer[]>([]);
 
+  // --- Discount State ---
+  const [isDiscountModalOpen, setIsDiscountModalOpen] = useState(false);
+  const [discountForm, setDiscountForm] = useState({
+    category: '',
+    percentage: 0,
+    reason: '',
+    symposium: 'Enigma' as 'Enigma' | 'Carteblanche',
+    isForMIT: false
+  });
+
   const fetchAccountDetails = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/admin/accounts`);
+      const response = await fetch(`${API_BASE_URL}/accounts`);
       if (!response.ok) throw new Error('Failed to fetch account details');
       const data = await response.json();
       setAccounts(data.length ? data : []);
@@ -176,13 +187,9 @@ const App: React.FC = () => {
 
       eventsData = await Promise.all(
         eventsData.map(async (event) => {
-          console.log('Fetched Event ID:', event.id, 'Type:', typeof event.id); // Added log
           try {
             const accResp = await fetch(`${API_BASE_URL}/events/${event.id}/accounts`);
             const assignedAccounts = await accResp.json();
-            assignedAccounts.forEach((acc: AccountDetail) => {
-              console.log('Fetched Assigned Account ID:', acc.id, 'Type:', typeof acc.id); // Added log
-            });
             return { ...event, assignedAccounts: assignedAccounts || [] };
           } catch (innerError) {
             console.error('Error fetching assigned accounts for event', event.id, innerError);
@@ -211,7 +218,6 @@ const App: React.FC = () => {
       setOrganizers(data);
     } catch (err) {
       console.error(err);
-      // Handle error display if necessary
     }
   };
 
@@ -221,23 +227,55 @@ const App: React.FC = () => {
     fetchOrganizers();
   }, []);
 
+  // --- Discount Handler ---
+  const handleApplyDiscount = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/events/apply-discount`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          symposiumName: discountForm.symposium,
+          eventCategory: discountForm.category,
+          discountPercentage: discountForm.percentage,
+          discountReason: discountForm.isForMIT ? '' : discountForm.reason,
+          isForMIT: discountForm.isForMIT
+        }),
+      });
+
+      if (!response.ok) throw new Error('Failed to apply discount');
+
+      setModalTitle('Success');
+      setModalMessage(`Discount applied to all ${discountForm.category} events in ${discountForm.symposium}.`);
+      setShowConfirmButton(false);
+      setIsModalOpen(true);
+      setIsDiscountModalOpen(false);
+      fetchEvents(); // Refresh data to see changes
+    } catch (err) {
+      console.error(err);
+      setModalTitle('Error');
+      setModalMessage('Failed to apply discount.');
+      setShowConfirmButton(false);
+      setIsModalOpen(true);
+    }
+  };
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
     const val = type === 'checkbox' ? (e.target as HTMLInputElement).checked : type === 'number' ? parseInt(value, 10) : value;
 
     if (editingEvent) {
-        const updatedEvent = { ...editingEvent, [name]: val };
-        if (name === 'eventCategory' && value === 'Workshop') {
-            updatedEvent.numberOfRounds = 0;
-        }
-        setEditingEvent(updatedEvent);
+      const updatedEvent = { ...editingEvent, [name]: val };
+      if (name === 'eventCategory' && value === 'Workshop') {
+        updatedEvent.numberOfRounds = 0;
+      }
+      setEditingEvent(updatedEvent);
     } else {
-        const updatedNewEvent = { ...newEvent, [name]: val };
-        if (name === 'eventCategory' && value === 'Workshop') {
-            updatedNewEvent.numberOfRounds = 0;
-            setRounds([]);
-        }
-        setNewEvent(updatedNewEvent);
+      const updatedNewEvent = { ...newEvent, [name]: val };
+      if (name === 'eventCategory' && value === 'Workshop') {
+        updatedNewEvent.numberOfRounds = 0;
+        setRounds([]);
+      }
+      setNewEvent(updatedNewEvent);
     }
   };
 
@@ -261,57 +299,46 @@ const App: React.FC = () => {
   const handleSaveEvent = async (e: React.FormEvent) => {
     e.preventDefault();
     const eventData = editingEvent
-  ? { ...editingEvent, rounds, isOpenForNonMIT: editingEvent.isOpenForNonMIT }
-  : { ...newEvent, rounds, symposiumName: activeSymposium, isOpenForNonMIT: newEvent.isOpenForNonMIT };
+      ? { ...editingEvent, rounds, isOpenForNonMIT: editingEvent.isOpenForNonMIT }
+      : { ...newEvent, rounds, symposiumName: activeSymposium, isOpenForNonMIT: newEvent.isOpenForNonMIT };
 
     const url = editingEvent ? `${API_BASE_URL}/events/${editingEvent.id}` : `${API_BASE_URL}/events`;
     const method = editingEvent ? 'PUT' : 'POST';
 
     try {
-  // Send event data to backend
-  const response = await fetch(url, {
-    method,
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(eventData),
-  });
+      const response = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(eventData),
+      });
 
-  if (!response.ok) throw new Error('Failed to save event');
+      if (!response.ok) throw new Error('Failed to save event');
 
-  // Show success modal first to avoid scroll jump\
-  
-  setModalTitle('Success');
-  setModalMessage(editingEvent ? 'Event updated successfully!' : 'Event created successfully!');
-  setShowConfirmButton(false);
-  setIsModalOpen(true);
+      setModalTitle('Success');
+      setModalMessage(editingEvent ? 'Event updated successfully!' : 'Event created successfully!');
+      setShowConfirmButton(false);
+      setIsModalOpen(true);
 
-  // THE FOLLOWING CODE IS TEMPORARILY DISABLED FOR DEBUGGING THE SCROLL ISSUE
-  
-  // Refresh the event list
-  await fetchEvents();
+      await fetchEvents();
 
-  // Reset form only if it's a new event (not during edit)
-  if (!editingEvent) {
-    setNewEvent({
-      eventName: '',
-      eventCategory: '',
-      eventDescription: '',
-      numberOfRounds: 1,
-      teamOrIndividual: 'Individual',
-      location: '',
-      registrationFees: 0,
-      organizerId: '',
-      lastDateForRegistration: '',
-      isOpenForNonMIT: false,
-    });
-    setRounds([{ roundNumber: 1, roundDetails: '', roundDateTime: '' }]);
-  } else {
-    // If editing, you might want to update the editingEvent state from the fetched events
-    // to ensure it's in sync with the database, especially if the backend modifies data.
-    // For now, we just close the form or reset it as intended.
-    setEditingEvent(null); // Example: close the edit form
-  }
-  
-}  catch (err) {
+      if (!editingEvent) {
+        setNewEvent({
+          eventName: '',
+          eventCategory: '',
+          eventDescription: '',
+          numberOfRounds: 1,
+          teamOrIndividual: 'Individual',
+          location: '',
+          registrationFees: 0,
+          organizerId: '',
+          lastDateForRegistration: '',
+          isOpenForNonMIT: false,
+        });
+        setRounds([{ roundNumber: 1, roundDetails: '', roundDateTime: '' }]);
+      } else {
+        setEditingEvent(null);
+      }
+    } catch (err) {
       console.error(err);
       setModalTitle('Error');
       setModalMessage('Failed to save event.');
@@ -376,7 +403,6 @@ const App: React.FC = () => {
   };
 
   const handleRemoveAccount = async (eventId: number, accountId: number) => {
-    console.log('Attempting to remove account with eventId:', eventId, 'and accountId:', accountId);
     try {
       const response = await fetch(
         `${API_BASE_URL}/events/${eventId}/accounts/${accountId}`,
@@ -386,9 +412,7 @@ const App: React.FC = () => {
         const errorData = await response.json();
         throw new Error(errorData.message || 'Failed to remove account.');
       }
-
       await fetchEvents();
-
       setModalTitle('Success');
       setModalMessage('Account removed successfully!');
       setShowConfirmButton(false);
@@ -415,26 +439,35 @@ const App: React.FC = () => {
             <Loader />
           ) : (
             <>
-              <div className="flex justify-center items-center gap-4 mb-8">
+              <div className="flex flex-wrap justify-between items-center mb-8 gap-4">
+                <div className="flex gap-4">
+                  <button
+                    onClick={() => setActiveSymposium('Enigma')}
+                    className={`px-6 py-3 font-semibold rounded-lg ${activeSymposium === 'Enigma' ? 'bg-purple-600' : 'bg-gray-800/60'
+                      }`}
+                  >
+                    Enigma
+                  </button>
+                  <button
+                    onClick={() => setActiveSymposium('Carteblanche')}
+                    className={`px-6 py-3 font-semibold rounded-lg ${activeSymposium === 'Carteblanche' ? 'bg-purple-600' : 'bg-gray-800/60'
+                      }`}
+                  >
+                    Carteblanche
+                  </button>
+                </div>
+                
+                {/* Discount Button */}
                 <button
-                  onClick={() => setActiveSymposium('Enigma')}
-                  className={`px-6 py-3 font-semibold rounded-lg ${
-                    activeSymposium === 'Enigma' ? 'bg-purple-600' : 'bg-gray-800/60'
-                  }`}
+                  onClick={() => setIsDiscountModalOpen(true)}
+                  className="px-6 py-3 bg-yellow-600 font-bold rounded-lg hover:bg-yellow-700 transition-colors shadow-lg"
                 >
-                  Enigma
-                </button>
-                <button
-                  onClick={() => setActiveSymposium('Carteblanche')}
-                  className={`px-6 py-3 font-semibold rounded-lg ${
-                    activeSymposium === 'Carteblanche' ? 'bg-purple-600' : 'bg-gray-800/60'
-                  }`}
-                >
-                  Carteblanche
+                  Manage Discounts
                 </button>
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+                {/* Add/Edit Form */}
                 <div>
                   <h3 className="text-2xl font-bold text-white mb-6">{editingEvent ? 'Edit' : 'Add'} Event</h3>
                   <form onSubmit={handleSaveEvent} className="space-y-6">
@@ -524,7 +557,7 @@ const App: React.FC = () => {
                         required
                         className="w-full px-4 py-3 bg-gray-800/60 border border-gray-700 rounded-lg text-white"
                       />
-<div className="flex items-center">
+                      <div className="flex items-center">
                         <input
                           type="checkbox"
                           name="isOpenForNonMIT"
@@ -575,6 +608,7 @@ const App: React.FC = () => {
                   </form>
                 </div>
 
+                {/* Event List */}
                 <div>
                   <h3 className="text-2xl font-bold text-white mb-6">Events</h3>
                   {filteredEvents.map((event) => (
@@ -620,7 +654,6 @@ const App: React.FC = () => {
                                   if (event.id !== undefined && acc.id !== undefined) {
                                     handleRemoveAccount(event.id, acc.id);
                                   } else {
-                                    console.error('Attempted to remove account with undefined eventId or accountId', { eventId: event.id, accountId: acc.id });
                                     setModalTitle('Error');
                                     setModalMessage('Cannot remove account: Invalid event or account ID.');
                                     setShowConfirmButton(false);
@@ -663,7 +696,8 @@ const App: React.FC = () => {
           placeholder="Select Account"
         />
       </ThemedModal>
-    <ThemedModal
+
+      <ThemedModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         title={modalTitle}
@@ -671,6 +705,79 @@ const App: React.FC = () => {
         showConfirmButton={showConfirmButton}
         onConfirm={modalOnConfirm}
       />
+
+      {/* Discount Modal */}
+      <ThemedModal
+        isOpen={isDiscountModalOpen}
+        onClose={() => setIsDiscountModalOpen(false)}
+        title="Apply Category Discount"
+        message="Enter details to apply a discount to all events in a specific category."
+        showConfirmButton={true}
+        onConfirm={handleApplyDiscount}
+      >
+        <div className="space-y-4 mt-4 text-black">
+          <label className="block text-gray-300 mb-1 text-sm">Symposium</label>
+          <select
+            className="w-full px-4 py-2 rounded border bg-gray-100"
+            value={discountForm.symposium}
+            onChange={(e) => setDiscountForm({ ...discountForm, symposium: e.target.value as any })}
+          >
+            <option value="Enigma">Enigma</option>
+            <option value="Carteblanche">Carteblanche</option>
+          </select>
+
+          <label className="block text-gray-300 mb-1 text-sm">Category</label>
+          <select
+            className="w-full px-4 py-2 rounded border bg-gray-100"
+            value={discountForm.category}
+            onChange={(e) => setDiscountForm({ ...discountForm, category: e.target.value })}
+          >
+            <option value="" disabled>Select Category</option>
+            <option value="Workshop">Workshop</option>
+            <option value="Paper Presentation">Paper Presentation</option>
+            <option value="Technical Events">Technical Events</option>
+            <option value="Non-Technical Events">Non-Technical Events</option>
+            <option value="Other">Other</option>
+          </select>
+
+          <label className="block text-gray-300 mb-1 text-sm">Discount Percentage</label>
+          <input
+            type="number"
+            placeholder="%"
+            min="0"
+            max="100"
+            className="w-full px-4 py-2 rounded border bg-gray-100"
+            value={discountForm.percentage}
+            onChange={(e) => setDiscountForm({ ...discountForm, percentage: parseInt(e.target.value) || 0 })}
+          />
+
+          <div className="flex items-center">
+            <input
+              type="checkbox"
+              id="isForMIT"
+              checked={discountForm.isForMIT}
+              onChange={(e) => setDiscountForm({ ...discountForm, isForMIT: e.target.checked })}
+              className="h-4 w-4 text-purple-600 bg-gray-700 border-gray-600 rounded focus:ring-purple-500"
+            />
+            <label htmlFor="isForMIT" className="ml-2 text-sm font-medium text-gray-300">
+              Apply to MIT students only
+            </label>
+          </div>
+
+          {!discountForm.isForMIT && (
+            <>
+              <label className="block text-gray-300 mb-1 text-sm">Reason</label>
+              <input
+                type="text"
+                placeholder="e.g. Early Bird Offer"
+                className="w-full px-4 py-2 rounded border bg-gray-100"
+                value={discountForm.reason}
+                onChange={(e) => setDiscountForm({ ...discountForm, reason: e.target.value })}
+              />
+            </>
+          )}
+        </div>
+      </ThemedModal>
     </>
   );
 };

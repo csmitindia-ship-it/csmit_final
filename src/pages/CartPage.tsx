@@ -7,21 +7,6 @@ import WorkshopRegistrationForm from './WorkshopRegistrationForm';
 import ThemedModal from '../components/ThemedModal';
 import API_BASE_URL from '../Config'; // adjust path if needed
 
-interface CartItem {
-  cartId: number;
-  eventId: number;
-  symposiumName: string;
-  eventDetails: {
-    eventName: string;
-    eventCategory: string;
-    eventDescription: string;
-    registrationFees: number;
-    lastDateForRegistration: string;
-    coordinatorName: string;
-    coordinatorContactNo: string;
-  };
-}
-
 const CartPage: React.FC = () => {
   const { user } = useAuth();
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
@@ -31,93 +16,169 @@ const CartPage: React.FC = () => {
   const [showRegistrationForm, setShowRegistrationForm] = useState(false);
   const [modal, setModal] = useState({ isOpen: false, title: '', message: '' });
 
+  interface CartItem {
+    cartId: number;
+    type: 'event' | 'pass' | 'accommodation';
+    eventDetails?: {
+      eventName: string;
+      eventCategory: string;
+      eventDescription: string;
+      registrationFees: number;
+      lastDateForRegistration: string;
+      coordinatorName: string;
+      coordinatorContactNo: string;
+      discountPercentage?: number;
+      discountReason?: string;
+    };
+    passDetails?: {
+      name: string;
+      cost: number;
+      description: string;
+    };
+    accommodationDetails?: {
+      name: string;
+      cost: number;
+      quantity: number;
+    };
+    // Common fields
+    eventId?: number;
+    symposiumName?: string;
+    passId?: number;
+    gender?: 'male' | 'female';
+  }
+
   const showModal = (title: string, message: string) => {
     setModal({ isOpen: true, title, message });
   };
 
   useEffect(() => {
     const fetchCartItems = async () => {
-      if (!user) return;
+      if (!user) {
+        setCartItems([]);
+        setLoading(false);
+        showModal('Login Required', 'Please log in to view your cart.');
+        return;
+      }
+      setLoading(true);
       try {
         const response = await axios.get(`${API_BASE_URL}/cart/${user.id}`);
-        setCartItems(response.data);
+        setCartItems(response.data || []);
       } catch (error) {
         showModal('Error', 'Error fetching cart items.');
+        console.error('Failed to fetch cart items:', error);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
 
     fetchCartItems();
   }, [user]);
 
-  const handleRemoveFromCart = async (cartId: number) => {
-    if (!user) return;
+  const handleRemoveFromCart = async (item: CartItem) => {
+    if (!user || !item) return;
     try {
-      await axios.delete(`${API_BASE_URL}/cart/${cartId}`, {
-        data: { userEmail: user.email },
-      });
-      setCartItems(cartItems.filter((item) => item.cartId !== cartId));
+      if (item.type === 'event') {
+        await axios.delete(`${API_BASE_URL}/cart/${item.cartId}`, {
+          data: { userEmail: user.email },
+        });
+      } else if (item.type === 'pass') {
+        await axios.delete(`${API_BASE_URL}/pass-cart/${item.cartId}`);
+      } else if (item.type === 'accommodation') {
+        await axios.delete(`${API_BASE_URL}/accommodation/cart/${user.id}`);
+      }
+      setCartItems(cartItems.filter((i) => i.cartId !== item.cartId || i.type !== item.type));
     } catch (error) {
       showModal('Error', 'Error removing item from cart.');
     }
   };
 
   const handleRegisterAll = async () => {
-    if (!user) return;
+    if (!user) {
+      showModal('Login Required', 'Please log in to register for events.');
+      return;
+    }
 
-    const freeEvents = cartItems.filter(item => item.eventDetails.registrationFees === 0);
-    const paidEvents = cartItems.filter(item => item.eventDetails.registrationFees > 0);
+    const eventItems = cartItems.filter(item => item && item.type === 'event');
+    
+    const hasPaidItems = cartItems.some(item => {
+      if (item.type === 'pass') return (item.passDetails?.cost || 0) > 0;
+      if (item.type === 'event' && item.eventDetails) {
+        const fee = item.eventDetails.registrationFees;
+        const discount = item.eventDetails.discountPercentage || 0;
+        const finalPrice = Math.floor(fee * (1 - discount / 100));
+        return finalPrice > 0;
+      }
+      if (item.type === 'accommodation' && item.accommodationDetails) {
+        return (item.accommodationDetails.cost * item.accommodationDetails.quantity) > 0;
+      }
+      return false;
+    });
 
-    if (paidEvents.length > 0) {
+    if (hasPaidItems) {
       setShowRegistrationForm(true);
     } else {
-      for (const item of freeEvents) {
-        try {
-          await axios.post(`${API_BASE_URL}/registrations/simple`, {
-            userEmail: user.email,
-            eventId: item.eventId,
-          });
-          setCartItems(prevItems => prevItems.filter(i => i.cartId !== item.cartId));
-        } catch (error) {
-          showModal('Error', `Failed to register for ${item.eventDetails.eventName}. You might be already registered.`);
+      // Handle only free events if no paid items are in the cart
+      for (const item of eventItems) {
+        if (item && item.eventDetails) {
+          try {
+            await axios.post(`${API_BASE_URL}/registrations/simple`, {
+              userEmail: user.email,
+              eventId: item.eventId,
+            });
+            setCartItems(prevItems => prevItems.filter(i => i.cartId !== item.cartId || i.type !== 'event'));
+          } catch (error) {
+            showModal('Error', `Failed to register for ${item.eventDetails.eventName}. You might be already registered.`);
+          }
         }
       }
-      if (cartItems.length > 0 && freeEvents.length === cartItems.length) {
+      if (eventItems.length > 0) {
         window.dispatchEvent(new CustomEvent('registrationComplete'));
         showModal('Success', 'Successfully registered for all free events!');
       }
     }
   };
 
+
   const handleRegistrationSuccess = async () => {
     if (!user) return;
 
-    const freeEvents = cartItems.filter(item => item.eventDetails.registrationFees === 0);
-    for (const item of freeEvents) {
-      try {
-        await axios.post(`${API_BASE_URL}/registrations/simple`, {
-          userEmail: user.email,
-          eventId: item.eventId,
-        });
-      } catch (error) {
-        showModal('Error', `Error registering for free event ${item.eventId}.`);
-      }
-    }
-
-    for (const item of cartItems) {
-      try {
-        await axios.delete(`${API_BASE_URL}/cart/${item.cartId}`, {
-          data: { userEmail: user.email },
-        });
-      } catch (error) {
-        showModal('Error', `Error removing item from cart ${item.cartId}.`);
-      }
-    }
+    const itemsToRemove = [...cartItems];
+    
     setCartItems([]);
     setShowRegistrationForm(false);
     window.dispatchEvent(new CustomEvent('registrationComplete'));
-    showModal('Success', 'Registration successful for all events!');
+    showModal('Success', 'Registration successful for all items!');
+
+    try {
+      for (const item of itemsToRemove) {
+        if (item.type === 'event') {
+          await axios.delete(`${API_BASE_URL}/cart/${item.cartId}`, {
+            data: { userEmail: user.email },
+          });
+        } else if (item.type === 'pass') {
+          await axios.delete(`${API_BASE_URL}/pass-cart/${item.cartId}`);
+        } else if (item.type === 'accommodation') {
+            await axios.delete(`${API_BASE_URL}/accommodation/cart/${user.id}`);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to clear some items from cart on backend:', error);
+    }
   };
+
+  const totalAmount = (cartItems || []).reduce((total, item) => {
+    let price = 0;
+    if (item.type === 'event' && item.eventDetails) {
+        const original = item.eventDetails.registrationFees;
+        const discount = item.eventDetails.discountPercentage || 0;
+        price = Math.floor(original * (1 - discount / 100));
+    } else if (item.type === 'pass' && item.passDetails) {
+        price = item.passDetails.cost;
+    } else if (item.type === 'accommodation' && item.accommodationDetails) {
+        price = item.accommodationDetails.cost * item.accommodationDetails.quantity;
+    }
+    return total + price;
+  }, 0);
 
   return (
     <>
@@ -156,10 +217,7 @@ const CartPage: React.FC = () => {
             <div className="container mx-auto p-4 bg-gray-900/70 backdrop-blur-md border border-purple-500/30 rounded-lg">
               {showRegistrationForm ? (
                 <WorkshopRegistrationForm 
-                  userId={user.id}
-                  userName={user.name || ""}
-                  userEmail={user.email}
-                  paidEvents={cartItems.filter(item => item.eventDetails.registrationFees > 0)}
+                  cartItems={cartItems}
                   onRegistrationSuccess={handleRegistrationSuccess}
                   onCancel={() => setShowRegistrationForm(false)}
                 />
@@ -174,23 +232,64 @@ const CartPage: React.FC = () => {
                     <div>
                       <div className="flex flex-wrap gap-4 justify-center">
                         {Array.isArray(cartItems) && cartItems.map((item) => (
-                          <div key={item.cartId} className="bg-gray-800/80 p-6 rounded-lg w-full sm:w-96">
-                            <h2 className="text-xl font-semibold">{item.eventDetails.eventName}</h2>
-                            <p>{item.eventDetails.eventDescription}</p>
-                            <p><strong>Fee:</strong> {item.eventDetails.registrationFees}</p>
+                          <div key={`${item.type}-${item.cartId}`} className="bg-gray-800/80 p-6 rounded-lg w-full sm:w-96 border border-gray-700">
+                            {item.type === 'event' && item.eventDetails && (
+                              <>
+                                <h2 className="text-xl font-semibold mb-1">{item.eventDetails.eventName}</h2>
+                                <p className="text-sm text-gray-400 mb-2">{item.eventDetails.eventCategory}</p>
+                                <p className="mb-3 text-sm">{item.eventDetails.eventDescription}</p>
+                                
+                                <div className="mt-2">
+                                  <strong>Fee: </strong>
+                                  {item.eventDetails.discountPercentage && item.eventDetails.discountPercentage > 0 ? (
+                                    <span>
+                                      <span className="line-through text-red-400 mr-2">₹{item.eventDetails.registrationFees}</span>
+                                      <span className="text-green-400 font-bold text-lg">
+                                        ₹{Math.floor(item.eventDetails.registrationFees * (1 - item.eventDetails.discountPercentage / 100))}
+                                      </span>
+                                      <div className="text-xs text-yellow-500 mt-1">
+                                        {item.eventDetails.discountPercentage}% OFF: {item.eventDetails.discountReason}
+                                      </div>
+                                    </span>
+                                  ) : (
+                                    <span>₹{item.eventDetails.registrationFees}</span>
+                                  )}
+                                </div>
+                              </>
+                            )}
+                            {item.type === 'pass' && item.passDetails && (
+                              <>
+                                <h2 className="text-xl font-semibold">{item.passDetails.name}</h2>
+                                <p>{item.passDetails.description}</p>
+                                <p className="mt-2"><strong>Cost:</strong> ₹{item.passDetails.cost}</p>
+                              </>
+                            )}
+                            {item.type === 'accommodation' && item.accommodationDetails && (
+                              <>
+                                <h2 className="text-xl font-semibold">{item.accommodationDetails.name}</h2>
+                                <p className="mt-2"><strong>Quantity:</strong> {item.accommodationDetails.quantity}</p>
+                                <p className="mt-2"><strong>Cost:</strong> ₹{item.accommodationDetails.cost * item.accommodationDetails.quantity} (₹{item.accommodationDetails.cost} each)</p>
+                              </>
+                            )}
                             <button
-                              onClick={() => handleRemoveFromCart(item.cartId)}
-                              className="mt-2 px-3 py-1 bg-red-500 text-white rounded-md hover:bg-red-600 transition"
+                              onClick={() => handleRemoveFromCart(item)}
+                              className="mt-4 px-3 py-1 bg-red-500 text-white rounded-md hover:bg-red-600 transition w-full"
                             >
                               Remove
                             </button>
                           </div>
                         ))}
                       </div>
-                      <div className="flex justify-center mt-4">
+
+                      <div className="flex flex-col items-center mt-8">
+                        <div className="text-xl font-bold mb-4 p-4 bg-gray-800 rounded-lg border border-purple-500/50">
+                            Total Amount: <span className="text-green-400">₹{totalAmount}</span>
+                        </div>
+
                         <button
                           onClick={handleRegisterAll}
-                          className="px-4 py-2 bg-purple-500 text-white rounded-md hover:bg-purple-600 transition"
+                          className="px-6 py-3 bg-purple-600 text-white font-bold rounded-lg hover:bg-purple-700 transition disabled:bg-gray-500 disabled:cursor-not-allowed shadow-lg"
+                          disabled={cartItems.length === 0}
                         >
                           Register for All Events
                         </button>
@@ -205,8 +304,9 @@ const CartPage: React.FC = () => {
           isOpen={modal.isOpen} 
           onClose={() => setModal({ isOpen: false, title: '', message: '' })} 
           title={modal.title} 
-          message={modal.message} 
-        />
+        >
+          <p>{modal.message}</p>
+        </ThemedModal>
       </div>
     </>
   );

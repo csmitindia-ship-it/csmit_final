@@ -8,6 +8,7 @@ import { useAuth } from '../context/AuthContext';
 import ThemedModal from '../components/ThemedModal';
 import EventCountdown from '../components/EventCountdown'; 
 import WorkshopRegistrationModal from '../components/WorkshopRegistrationModal';
+import PassesDisplay from '../components/PassesDisplay';
 import axios from 'axios';
 import API_BASE_URL from '../Config'; // adjust path if needed
 import { useLocation } from 'react-router-dom';
@@ -37,6 +38,9 @@ interface Event {
   registrationLink?: string;
   open_to_non_mit?: boolean | number;
   posterImage?: string;
+  discountPercentage?: number;
+  discountReason?: string;
+  mit_discount_percentage?: number;
 }
 
 const EventsPage: React.FC = () => {
@@ -56,6 +60,7 @@ const EventsPage: React.FC = () => {
   const [cartItems, setCartItems] = useState<any[]>([]);
   const [isCartActionInProgress, setIsCartActionInProgress] = useState(false);
   const [symposiumStatus, setSymposiumStatus] = useState<any[]>([]);
+  const [activePasses, setActivePasses] = useState<string[]>([]);
 
   const { user, isLoggedIn, loading: authLoading } = useAuth();
   const location = useLocation();
@@ -69,6 +74,12 @@ const EventsPage: React.FC = () => {
   }, [location.search]);
 
   const MIT_COLLEGE_NAME = "Madras Institute of Technology";
+
+  const isMITStudentHelper = (collegeName?: string) => {
+    if (!collegeName) return false;
+    const lowerCaseCollege = collegeName.toLowerCase().trim();
+    return lowerCaseCollege === "madras institute of technology" || lowerCaseCollege === "mit";
+  };
 
   const isSymposiumOpen = (symposiumName: 'Enigma' | 'Carteblanche') => {
     const symposium = symposiumStatus.find(s => s.symposiumName === symposiumName);
@@ -129,16 +140,31 @@ const EventsPage: React.FC = () => {
     }
   };
 
+  const fetchVerifiedPasses = async () => {
+    if (!user || !user.id) return;
+    try {
+      const response = await axios.get(`${API_BASE_URL}/registrations/verified/${user.id}`);
+      const passNames = response.data
+        .filter((item: any) => item.passId !== null && item.passName)
+        .map((item: any) => item.passName);
+      setActivePasses(passNames);
+    } catch (error) {
+      console.error('Error fetching verified passes:', error);
+    }
+  };
+
   useEffect(() => {
     fetchEvents();
     fetchSymposiumStatus();
     if (isLoggedIn) {
       fetchRegisteredEvents();
       fetchCartItems();
+      fetchVerifiedPasses();
     }
 
     const handleRegistrationComplete = () => {
       fetchRegisteredEvents();
+      fetchVerifiedPasses();
     };
 
     window.addEventListener('registrationComplete', handleRegistrationComplete);
@@ -173,13 +199,11 @@ const EventsPage: React.FC = () => {
   .filter(event => event.symposiumName === activeSymposium)
   .filter(event => (activeCategory ? event.eventCategory === activeCategory : true))
   .filter(event => {
-    if (!user) {
-      return true;
+    if (user && isMITStudentHelper(user.college)) {
+      return true; // MIT students see all events
     }
-    if (user.college === MIT_COLLEGE_NAME) {
-      return true;
-    }
-    return event.open_to_non_mit === true || event.open_to_non_mit === 1;
+    // For non-MIT students and non-logged-in users, show events that are not explicitly closed to them
+    return event.open_to_non_mit !== false && event.open_to_non_mit !== 0;
   })
   .sort((a, b) => a.eventCategory.localeCompare(b.eventCategory));
 
@@ -288,28 +312,28 @@ const EventsPage: React.FC = () => {
           <h2 className="text-3xl font-bold text-white mb-8 text-center">Events</h2>
 
           <div className="flex justify-center items-center gap-4 mb-8">
-  <button
-    onClick={() => setActiveSymposium('Enigma')}
-    className={`px-6 py-3 font-semibold rounded-lg transition-all duration-300 ${
-      activeSymposium === 'Enigma'
-        ? 'bg-purple-600 text-white scale-105 shadow-lg'
-        : 'bg-gray-800/60 text-gray-300 hover:bg-purple-500/50'
-    }`}
-  >
-    Enigma
-  </button>
+            <button
+              onClick={() => setActiveSymposium('Enigma')}
+              className={`px-6 py-3 font-semibold rounded-lg transition-all duration-300 ${
+                activeSymposium === 'Enigma'
+                  ? 'bg-purple-600 text-white scale-105 shadow-lg'
+                  : 'bg-gray-800/60 text-gray-300 hover:bg-purple-500/50'
+              }`}
+            >
+              Enigma
+            </button>
 
-  <button
-    onClick={() => setActiveSymposium('Carteblanche')}
-    className={`px-6 py-3 font-semibold rounded-lg transition-all duration-300 ${
-      activeSymposium === 'Carteblanche'
-        ? 'bg-purple-600 text-white scale-105 shadow-lg'
-        : 'bg-gray-800/60 text-gray-300 hover:bg-purple-500/50'
-    }`}
-  >
-    Carteblanche
-  </button>
-</div>
+            <button
+              onClick={() => setActiveSymposium('Carteblanche')}
+              className={`px-6 py-3 font-semibold rounded-lg transition-all duration-300 ${
+                activeSymposium === 'Carteblanche'
+                  ? 'bg-purple-600 text-white scale-105 shadow-lg'
+                  : 'bg-gray-800/60 text-gray-300 hover:bg-purple-500/50'
+              }`}
+            >
+              Carteblanche
+            </button>
+          </div>
 
           {eventCategories.length > 0 && (
             <div className="flex flex-wrap justify-center border-b border-gray-700 mb-8">
@@ -332,12 +356,30 @@ const EventsPage: React.FC = () => {
           {filteredEvents.length === 0 ? (
             <p className="text-center text-xl text-gray-400 mt-10">Events haven't started yet.</p>
           ) : (
-<div className="max-w-7xl mx-auto flex flex-wrap justify-center gap-8">
+            <div className="max-w-7xl mx-auto flex flex-wrap justify-center gap-8">
               {filteredEvents.map((event) => {
                 const isRegistrationClosed = new Date() > new Date(event.lastDateForRegistration);
                 const isRegistered = registeredEvents.includes(event.id);
                 const isInCart = cartItems.some(item => item.eventId === event.id);
                 const symposiumStarted = isSymposiumOpen(activeSymposium);
+
+                const hasTechPass = activePasses.some(pass => pass.toLowerCase().includes('technical'));
+                const hasNonTechPass = activePasses.some(pass => pass.toLowerCase().includes('non-technical'));
+                const isTechnical = event.eventCategory.toLowerCase().includes('technical');
+                const isNonTechnical = event.eventCategory.toLowerCase().includes('non-technical');
+                const hasPassCoverage = (isTechnical && hasTechPass) || (isNonTechnical && hasNonTechPass);
+                
+                const isMITStudent = isMITStudentHelper(user?.college);
+                let discountToShow;
+                let reasonToShow;
+
+                if (isMITStudent) {
+                    discountToShow = event.mit_discount_percentage;
+                    reasonToShow = '';
+                } else {
+                    discountToShow = event.discountPercentage;
+                    reasonToShow = event.discountReason;
+                }
 
                 return (
                   <div
@@ -358,11 +400,37 @@ const EventsPage: React.FC = () => {
                           </div>
                         )}
 
-
-
                       <h3 className="text-2xl font-extrabold text-white mb-1 leading-tight">{event.eventName}</h3>
                       <p className="text-purple-300 text-sm font-medium mb-3">{event.eventCategory}</p>
                       <p className="text-gray-300 text-base mb-4 flex-grow">{event.eventDescription.substring(0, 100)}...</p>
+
+                      {/* --- DISCOUNT PRICE DISPLAY IN CARD --- */}
+                      {symposiumStarted && (
+                        <div className="mb-4">
+                           {discountToShow && discountToShow > 0 ? (
+                             <div className="flex flex-col">
+                                <div className="flex items-center gap-2">
+                                  <span className="line-through text-red-400 text-sm">₹{event.registrationFees}</span>
+                                  <span className="text-green-400 font-bold text-lg">
+                                    ₹{Math.floor(event.registrationFees * (1 - discountToShow / 100))}
+                                  </span>
+                                </div>
+                                {reasonToShow && (
+                                  <span className="text-xs text-yellow-400 italic">
+                                    {discountToShow}% OFF: {reasonToShow}
+                                  </span>
+                                )}
+                             </div>
+                           ) : (
+                              event.registrationFees > 0 ? (
+                                <p className="text-white font-bold">₹{event.registrationFees}</p>
+                              ) : (
+                                <p className="text-green-400 font-bold">Free</p>
+                              )
+                           )}
+                        </div>
+                      )}
+                      {/* ------------------------------------- */}
 
                       {symposiumStarted && (
                         <>
@@ -371,7 +439,7 @@ const EventsPage: React.FC = () => {
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              if (isRegistered) return;
+                              if (isRegistered || hasPassCoverage) return;
                               if (event.registrationFees === 0) {
                                 handleFreeRegistration(event);
                               } else {
@@ -382,9 +450,11 @@ const EventsPage: React.FC = () => {
                                 }
                               }
                             }}
-                            disabled={isRegistrationClosed || isCartActionInProgress || isRegistered}
+                            disabled={isRegistrationClosed || isCartActionInProgress || isRegistered || hasPassCoverage}
                             className={`mt-4 inline-block px-4 py-2 font-semibold rounded-lg transition ${
-                              isRegistered
+                              hasPassCoverage
+                                ? 'bg-teal-600 text-white cursor-not-allowed'
+                                : isRegistered
                                 ? 'bg-gray-600 text-white cursor-not-allowed'
                                 : isRegistrationClosed
                                 ? 'bg-gray-500 text-gray-300 cursor-not-allowed'
@@ -395,7 +465,9 @@ const EventsPage: React.FC = () => {
                                 : 'bg-purple-600 text-white hover:bg-purple-700'
                             }`}
                           >
-                            {isRegistered
+                            {hasPassCoverage
+                              ? 'Pass Obtained'
+                              : isRegistered
                               ? 'Registered'
                               : isRegistrationClosed
                               ? 'Registration Closed'
@@ -416,104 +488,73 @@ const EventsPage: React.FC = () => {
         </div>
       )}
 
+      <PassesDisplay />
       <LoginPage 
         isOpen={isLoginModalOpen} 
         onClose={() => setIsLoginModalOpen(false)} 
         onSwitchToSignUp={handleSwitchToSignUp} 
         onSwitchToForgotPassword={() => {}}
       />
-      <SignUpPage 
-        isOpen={isSignUpModalOpen} 
-        onClose={() => setIsSignUpModalOpen(false)} 
-        onSwitchToLogin={handleSwitchToLogin} 
-      />
-
       <ThemedModal
         isOpen={isModalOpen}
         onClose={() => {
           setIsModalOpen(false);
           setSelectedEvent(null);
-          setModalContent({ title: '', message: '' });
         }}
         title={selectedEvent ? selectedEvent.eventName : modalContent.title}
       >
         {selectedEvent ? (
-          <div className="text-left max-h-[70vh] overflow-y-auto pr-2 p-4 bg-gray-700/30 rounded-lg shadow-inner">
-            {selectedEvent.posterImage && (
-      <div
-        className="mb-6 w-full max-w-md mx-auto bg-black/40 rounded-lg shadow-md flex justify-center items-center overflow-hidden"
-        style={{ aspectRatio: '4 / 5' }}
-      >
-        <img
-          src={`data:image/jpeg;base64,${selectedEvent.posterImage}`}
-          alt={selectedEvent.eventName}
-          className="w-full h-full object-contain"
-        />
-      </div>
-    )}
+          <div className="text-white">
+            <p className="text-purple-300 text-sm mb-3">{selectedEvent.eventCategory}</p>
+            <p className="text-gray-300 text-base mb-4">{selectedEvent.eventDescription}</p>
+            <p><strong>Rounds:</strong> {selectedEvent.numberOfRounds}</p>
+            <p><strong>Type:</strong> {selectedEvent.teamOrIndividual}</p>
+            <p><strong>Location:</strong> {selectedEvent.location}</p>
+            
+            {/* --- DISCOUNT PRICE DISPLAY IN MODAL --- */}
+            <div className="mb-2">
+              <strong>Registration Fees: </strong>
+              {(() => {
+                const isMITStudent = isMITStudentHelper(user?.college);
+                const discountToShow = isMITStudent && selectedEvent.mit_discount_percentage ? selectedEvent.mit_discount_percentage : selectedEvent.discountPercentage;
+                const reasonToShow = isMITStudent ? '' : selectedEvent.discountReason;
 
-
-            <h3 className="text-2xl font-bold text-white mb-4 border-b border-gray-600 pb-2">{selectedEvent.eventName}</h3>
-
-            <div className="space-y-3 mb-6">
-              <p className="text-gray-200 text-lg"><strong className="text-purple-300">Category:</strong> {selectedEvent.eventCategory}</p>
-              <p className="text-gray-300 leading-relaxed"><strong className="text-purple-300">Description:</strong> {selectedEvent.eventDescription}</p>
-              <div className="grid grid-cols-2 gap-y-2">
-                <p className="text-gray-200"><strong className="text-purple-300">Rounds:</strong> {selectedEvent.numberOfRounds}</p>
-                <p className="text-gray-200"><strong className="text-purple-300">Type:</strong> {selectedEvent.teamOrIndividual}</p>
-                <p className="text-gray-200"><strong className="text-purple-300">Location:</strong> {selectedEvent.location}</p>
-                <p className="text-gray-200"><strong className="text-purple-300">Fees:</strong> ₹{selectedEvent.registrationFees}</p>
-                <p className="text-gray-200 col-span-2"><strong className="text-purple-300">Last Date:</strong> {new Date(selectedEvent.lastDateForRegistration).toLocaleDateString()}</p>
-              </div>
+                if (discountToShow && discountToShow > 0) {
+                  return (
+                    <span className="inline-block ml-1">
+                      <span className="line-through text-red-400 mr-2">
+                        ₹{selectedEvent.registrationFees}
+                      </span>
+                      <span className="text-green-400 font-bold text-lg mr-2">
+                        ₹{Math.floor(selectedEvent.registrationFees * (1 - discountToShow / 100))}
+                      </span>
+                      {reasonToShow && (
+                        <span className="text-xs bg-yellow-600 text-white px-2 py-1 rounded-full">
+                          {discountToShow}% OFF: {reasonToShow}
+                        </span>
+                      )}
+                    </span>
+                  );
+                }
+                return <span>₹{selectedEvent.registrationFees}</span>;
+              })()}
             </div>
+            {/* --------------------------------------- */}
 
-            <div className="mb-6 border-t border-gray-600 pt-4">
-              <h4 className="text-xl font-semibold text-white mb-3">Coordinator Details:</h4>
-              <p className="text-gray-200"><strong className="text-purple-300">Name:</strong> {selectedEvent.coordinatorName}</p>
-              <p className="text-gray-200"><strong className="text-purple-300">Contact:</strong> {selectedEvent.coordinatorContactNo}</p>
-              <p className="text-gray-200"><strong className="text-purple-300">Email:</strong> {selectedEvent.coordinatorMail}</p>
-            </div>
-
-            {selectedEvent.rounds && selectedEvent.rounds.length > 0 && (
-              <div className="mb-6 border-t border-gray-600 pt-4">
-                <h4 className="text-xl font-semibold text-white mb-3">Rounds:</h4>
-                <div className="space-y-3">
-                  {selectedEvent.rounds.map((round, index) => (
-                    <div key={index} className="p-3 bg-gray-800/50 rounded-md border border-gray-600">
-                      <p className="text-gray-200 font-medium"><strong>Round {round.roundNumber}:</strong> {round.roundDetails}</p>
-                      <p className="text-gray-400 text-sm mt-1">Date/Time: {new Date(round.roundDateTime).toLocaleString()}</p>
-                    </div>
-                  ))}
-                </div>
+            <p><strong>Coordinator:</strong> {selectedEvent.coordinatorName} ({selectedEvent.coordinatorContactNo})</p>
+            <p><strong>Coordinator Email:</strong> {selectedEvent.coordinatorMail}</p>
+            <p><strong>Last Date for Registration:</strong> {new Date(selectedEvent.lastDateForRegistration).toLocaleString()}</p>
+            {selectedEvent.rounds && selectedEvent.rounds.map((round, index) => (
+              <div key={index} className="ml-4 mt-2">
+                <p><strong>Round {round.roundNumber}:</strong> {round.roundDetails}</p>
+                <p>Date & Time: {new Date(round.roundDateTime).toLocaleString()}</p>
               </div>
-            )}
-
-            {selectedEvent.registrationLink && (
-              <div className="text-center mt-6 border-t border-gray-600 pt-4">
-                <a
-                  href={selectedEvent.registrationLink}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-block px-6 py-3 font-bold rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-all duration-300 transform hover:scale-105 shadow-lg"
-                >
-                  External Registration Link
-                </a>
-              </div>
-            )}
+            ))}
           </div>
         ) : (
-          <p className="text-gray-300 mb-6">{modalContent.message}</p>
+          <p className="text-white">{modalContent.message}</p>
         )}
       </ThemedModal>
-
-      {selectedWorkshopEvent && (
-        <WorkshopRegistrationModal
-          isOpen={isWorkshopModalOpen}
-          onClose={() => setIsWorkshopModalOpen(false)}
-          event={selectedWorkshopEvent}
-          isRegistered={registeredEvents.includes(selectedWorkshopEvent.id)}
-        />
-      )}
     </div>
   );
 };
