@@ -86,15 +86,13 @@ module.exports = function (db) {
       const [rows] = await db.execute('SELECT * FROM symposium_status');
       
       console.log(`Query successful, fetched ${rows.length} status rows. Sending response.`);
-      res
-        .status(200)
-        .json(themedResponse(true, "Symposium Status", "Fetched successfully.", { data: rows }));
+      res.status(200).json(rows);
     } catch (error) {
       // This is the most critical log
       console.error('Error fetching symposium status:', error);
       res
         .status(500)
-        .json(themedResponse(false, "Error", "Failed to fetch symposium status."));
+        .json({ message: "Failed to fetch symposium status." });
     }
   });
 

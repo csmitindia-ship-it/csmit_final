@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Papa from 'papaparse'; // npm install papaparse @types/papaparse
 import API_BASE_URL from '../Config';
 import AdminHeader from '../ui/AdminHeader';
@@ -10,6 +11,7 @@ interface VerificationResult {
 }
 
 const VerifyTransactionPage: React.FC = () => {
+  const navigate = useNavigate();
   // --- Single Verification State ---
   const [transactionId, setTransactionId] = useState('');
   const [isSingleLoading, setIsSingleLoading] = useState(false);
@@ -56,7 +58,13 @@ const VerifyTransactionPage: React.FC = () => {
 
     try {
       const result = await verifyTransactionAPI(transactionId);
-      setSingleMessage(result.message);
+      if (result.userId) {
+        setSingleMessage(result.message);
+        // Navigate to the email page on success
+        navigate(`/admin/send-confirmation-email/${result.userId}`);
+      } else {
+        setSingleMessage(result.message);
+      }
     } catch (error: any) {
       setSingleMessage(error.message);
     } finally {

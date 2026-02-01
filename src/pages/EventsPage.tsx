@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import Header from '../ui/Header'; 
-import backgroundImage from '../Login_Sign/photo.jpeg'; 
-import LoginPage from '../Login_Sign/LoginPage'; 
-import SignUpPage from '../Login_Sign/SignUpPage'; 
-import Loader from '../components/Loader'; 
-import { useAuth } from '../context/AuthContext'; 
+import Header from '../ui/Header';
+import backgroundImage from '../Login_Sign/photo.jpeg';
+import LoginPage from '../Login_Sign/LoginPage';
+import SignUpPage from '../Login_Sign/SignUpPage';
+import Loader from '../components/Loader';
+import { useAuth } from '../context/AuthContext';
 import ThemedModal from '../components/ThemedModal';
-import EventCountdown from '../components/EventCountdown'; 
+import EventCountdown from '../components/EventCountdown';
 import WorkshopRegistrationModal from '../components/WorkshopRegistrationModal';
 import PassesDisplay from '../components/PassesDisplay';
 import axios from 'axios';
@@ -34,7 +34,7 @@ interface Event {
   lastDateForRegistration: string;
   symposiumName: 'Enigma' | 'Carteblanche';
   rounds?: Round[];
-  posterUrl?: string; 
+  posterUrl?: string;
   registrationLink?: string;
   open_to_non_mit?: boolean | number;
   posterImage?: string;
@@ -82,6 +82,8 @@ const EventsPage: React.FC = () => {
   };
 
   const isSymposiumOpen = (symposiumName: 'Enigma' | 'Carteblanche') => {
+    // Safety check: symposiumStatus might be undefined initially
+    if (!symposiumStatus) return false;
     const symposium = symposiumStatus.find(s => s.symposiumName === symposiumName);
     return symposium ? symposium.isOpen === 1 : false;
   };
@@ -196,16 +198,16 @@ const EventsPage: React.FC = () => {
   }, [cartItems]);
 
   const filteredEvents = events
-  .filter(event => event.symposiumName === activeSymposium)
-  .filter(event => (activeCategory ? event.eventCategory === activeCategory : true))
-  .filter(event => {
-    if (user && isMITStudentHelper(user.college)) {
-      return true; // MIT students see all events
-    }
-    // For non-MIT students and non-logged-in users, show events that are not explicitly closed to them
-    return event.open_to_non_mit !== false && event.open_to_non_mit !== 0;
-  })
-  .sort((a, b) => a.eventCategory.localeCompare(b.eventCategory));
+    .filter(event => event.symposiumName === activeSymposium)
+    .filter(event => (activeCategory ? event.eventCategory === activeCategory : true))
+    .filter(event => {
+      if (user && isMITStudentHelper(user.college)) {
+        return true; // MIT students see all events
+      }
+      // For non-MIT students and non-logged-in users, show events that are not explicitly closed to them
+      return event.open_to_non_mit !== false && event.open_to_non_mit !== 0;
+    })
+    .sort((a, b) => a.eventCategory.localeCompare(b.eventCategory));
 
 
   const handleSwitchToSignUp = () => {
@@ -289,8 +291,8 @@ const EventsPage: React.FC = () => {
   };
 
   return (
-    <div 
-      className="relative min-h-screen font-sans text-gray-200 overflow-x-hidden" 
+    <div
+      className="relative min-h-screen font-sans text-gray-200 overflow-x-hidden"
       style={{ fontFamily: "'Poppins', sans-serif" }}
     >
       <div
@@ -314,22 +316,20 @@ const EventsPage: React.FC = () => {
           <div className="flex justify-center items-center gap-4 mb-8">
             <button
               onClick={() => setActiveSymposium('Enigma')}
-              className={`px-6 py-3 font-semibold rounded-lg transition-all duration-300 ${
-                activeSymposium === 'Enigma'
+              className={`px-6 py-3 font-semibold rounded-lg transition-all duration-300 ${activeSymposium === 'Enigma'
                   ? 'bg-purple-600 text-white scale-105 shadow-lg'
                   : 'bg-gray-800/60 text-gray-300 hover:bg-purple-500/50'
-              }`}
+                }`}
             >
               Enigma
             </button>
 
             <button
               onClick={() => setActiveSymposium('Carteblanche')}
-              className={`px-6 py-3 font-semibold rounded-lg transition-all duration-300 ${
-                activeSymposium === 'Carteblanche'
+              className={`px-6 py-3 font-semibold rounded-lg transition-all duration-300 ${activeSymposium === 'Carteblanche'
                   ? 'bg-purple-600 text-white scale-105 shadow-lg'
                   : 'bg-gray-800/60 text-gray-300 hover:bg-purple-500/50'
-              }`}
+                }`}
             >
               Carteblanche
             </button>
@@ -341,11 +341,10 @@ const EventsPage: React.FC = () => {
                 <button
                   key={category}
                   onClick={() => setActiveCategory(category)}
-                  className={`px-6 py-3 text-sm font-medium transition ${
-                    activeCategory === category
+                  className={`px-6 py-3 text-sm font-medium transition ${activeCategory === category
                       ? 'text-purple-400 border-b-2 border-purple-400'
                       : 'text-gray-400 hover:text-purple-300'
-                  }`}
+                    }`}
                 >
                   {category}
                 </button>
@@ -368,17 +367,17 @@ const EventsPage: React.FC = () => {
                 const isTechnical = event.eventCategory.toLowerCase().includes('technical');
                 const isNonTechnical = event.eventCategory.toLowerCase().includes('non-technical');
                 const hasPassCoverage = (isTechnical && hasTechPass) || (isNonTechnical && hasNonTechPass);
-                
+
                 const isMITStudent = isMITStudentHelper(user?.college);
                 let discountToShow;
                 let reasonToShow;
 
                 if (isMITStudent) {
-                    discountToShow = event.mit_discount_percentage;
-                    reasonToShow = '';
+                  discountToShow = event.mit_discount_percentage;
+                  reasonToShow = '';
                 } else {
-                    discountToShow = event.discountPercentage;
-                    reasonToShow = event.discountReason;
+                  discountToShow = event.discountPercentage;
+                  reasonToShow = event.discountReason;
                 }
 
                 return (
@@ -391,14 +390,14 @@ const EventsPage: React.FC = () => {
 
                     <div className="relative z-10 p-6 flex flex-col h-full">
                       {event.posterImage && (
-                          <div className="mb-4 w-full bg-black/40 rounded-md shadow-md flex justify-center items-center overflow-hidden" style={{ aspectRatio: '4 / 5' }}>
-                            <img
-                              src={`data:image/jpeg;base64,${event.posterImage}`}
-                              alt={event.eventName}
-                              className="w-full h-full object-contain"
-                            />
-                          </div>
-                        )}
+                        <div className="mb-4 w-full bg-black/40 rounded-md shadow-md flex justify-center items-center overflow-hidden" style={{ aspectRatio: '4 / 5' }}>
+                          <img
+                            src={`data:image/jpeg;base64,${event.posterImage}`}
+                            alt={event.eventName}
+                            className="w-full h-full object-contain"
+                          />
+                        </div>
+                      )}
 
                       <h3 className="text-2xl font-extrabold text-white mb-1 leading-tight">{event.eventName}</h3>
                       <p className="text-purple-300 text-sm font-medium mb-3">{event.eventCategory}</p>
@@ -407,27 +406,27 @@ const EventsPage: React.FC = () => {
                       {/* --- DISCOUNT PRICE DISPLAY IN CARD --- */}
                       {symposiumStarted && (
                         <div className="mb-4">
-                           {discountToShow && discountToShow > 0 ? (
-                             <div className="flex flex-col">
-                                <div className="flex items-center gap-2">
-                                  <span className="line-through text-red-400 text-sm">₹{event.registrationFees}</span>
-                                  <span className="text-green-400 font-bold text-lg">
-                                    ₹{Math.floor(event.registrationFees * (1 - discountToShow / 100))}
-                                  </span>
-                                </div>
-                                {reasonToShow && (
-                                  <span className="text-xs text-yellow-400 italic">
-                                    {discountToShow}% OFF: {reasonToShow}
-                                  </span>
-                                )}
-                             </div>
-                           ) : (
-                              event.registrationFees > 0 ? (
-                                <p className="text-white font-bold">₹{event.registrationFees}</p>
-                              ) : (
-                                <p className="text-green-400 font-bold">Free</p>
-                              )
-                           )}
+                          {discountToShow && discountToShow > 0 ? (
+                            <div className="flex flex-col">
+                              <div className="flex items-center gap-2">
+                                <span className="line-through text-red-400 text-sm">₹{event.registrationFees}</span>
+                                <span className="text-green-400 font-bold text-lg">
+                                  ₹{Math.floor(event.registrationFees * (1 - discountToShow / 100))}
+                                </span>
+                              </div>
+                              {reasonToShow && (
+                                <span className="text-xs text-yellow-400 italic">
+                                  {discountToShow}% OFF: {reasonToShow}
+                                </span>
+                              )}
+                            </div>
+                          ) : (
+                            event.registrationFees > 0 ? (
+                              <p className="text-white font-bold">₹{event.registrationFees}</p>
+                            ) : (
+                              <p className="text-green-400 font-bold">Free</p>
+                            )
+                          )}
                         </div>
                       )}
                       {/* ------------------------------------- */}
@@ -451,31 +450,30 @@ const EventsPage: React.FC = () => {
                               }
                             }}
                             disabled={isRegistrationClosed || isCartActionInProgress || isRegistered || hasPassCoverage}
-                            className={`mt-4 inline-block px-4 py-2 font-semibold rounded-lg transition ${
-                              hasPassCoverage
+                            className={`mt-4 inline-block px-4 py-2 font-semibold rounded-lg transition ${hasPassCoverage
                                 ? 'bg-teal-600 text-white cursor-not-allowed'
                                 : isRegistered
-                                ? 'bg-gray-600 text-white cursor-not-allowed'
-                                : isRegistrationClosed
-                                ? 'bg-gray-500 text-gray-300 cursor-not-allowed'
-                                : event.registrationFees === 0
-                                ? 'bg-green-600 text-white hover:bg-green-700'
-                                : isInCart
-                                ? 'bg-red-600 text-white hover:bg-red-700'
-                                : 'bg-purple-600 text-white hover:bg-purple-700'
-                            }`}
+                                  ? 'bg-gray-600 text-white cursor-not-allowed'
+                                  : isRegistrationClosed
+                                    ? 'bg-gray-500 text-gray-300 cursor-not-allowed'
+                                    : event.registrationFees === 0
+                                      ? 'bg-green-600 text-white hover:bg-green-700'
+                                      : isInCart
+                                        ? 'bg-red-600 text-white hover:bg-red-700'
+                                        : 'bg-purple-600 text-white hover:bg-purple-700'
+                              }`}
                           >
                             {hasPassCoverage
                               ? 'Pass Obtained'
                               : isRegistered
-                              ? 'Registered'
-                              : isRegistrationClosed
-                              ? 'Registration Closed'
-                              : event.registrationFees === 0
-                              ? 'Register for Free'
-                              : isInCart
-                              ? 'Remove from Cart'
-                              : 'Add to Cart'}
+                                ? 'Registered'
+                                : isRegistrationClosed
+                                  ? 'Registration Closed'
+                                  : event.registrationFees === 0
+                                    ? 'Register for Free'
+                                    : isInCart
+                                      ? 'Remove from Cart'
+                                      : 'Add to Cart'}
                           </button>
                         </>
                       )}
@@ -489,11 +487,11 @@ const EventsPage: React.FC = () => {
       )}
 
       <PassesDisplay />
-      <LoginPage 
-        isOpen={isLoginModalOpen} 
-        onClose={() => setIsLoginModalOpen(false)} 
-        onSwitchToSignUp={handleSwitchToSignUp} 
-        onSwitchToForgotPassword={() => {}}
+      <LoginPage
+        isOpen={isLoginModalOpen}
+        onClose={() => setIsLoginModalOpen(false)}
+        onSwitchToSignUp={handleSwitchToSignUp}
+        onSwitchToForgotPassword={() => { }}
       />
       <ThemedModal
         isOpen={isModalOpen}
@@ -510,7 +508,7 @@ const EventsPage: React.FC = () => {
             <p><strong>Rounds:</strong> {selectedEvent.numberOfRounds}</p>
             <p><strong>Type:</strong> {selectedEvent.teamOrIndividual}</p>
             <p><strong>Location:</strong> {selectedEvent.location}</p>
-            
+
             {/* --- DISCOUNT PRICE DISPLAY IN MODAL --- */}
             <div className="mb-2">
               <strong>Registration Fees: </strong>

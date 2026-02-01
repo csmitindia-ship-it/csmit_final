@@ -42,6 +42,7 @@ import aravinth from './Photos/aravinth.jpeg';
 import HomePageGallery from './components/HomePageGallery';
 import CsmitLogo from './Photos/Logo.png';
 import RegistrationTimer from './components/RegistrationTimer';
+import OfferBanner from './components/OfferBanner';
 import PassesDisplay from './components/PassesDisplay';
 
 // --- Data for different sections ---
@@ -164,6 +165,7 @@ export default function HomePage() {
         <main className="relative z-10 pt-16">
             <div className="fixed top-16 left-0 w-screen z-20">
             <RegistrationTimer />
+            <OfferBanner />
           </div>
 
 

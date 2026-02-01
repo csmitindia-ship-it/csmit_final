@@ -47,10 +47,10 @@ interface WorkshopRegistrationFormProps {
   onCancel: () => void;
 }
 
-const WorkshopRegistrationForm: React.FC<WorkshopRegistrationFormProps> = ({ 
-  cartItems, 
-  onRegistrationSuccess, 
-  onCancel 
+const WorkshopRegistrationForm: React.FC<WorkshopRegistrationFormProps> = ({
+  cartItems,
+  onRegistrationSuccess,
+  onCancel
 }) => {
   const { user } = useAuth();
   const [transactionId, setTransactionId] = useState('');
@@ -72,7 +72,7 @@ const WorkshopRegistrationForm: React.FC<WorkshopRegistrationFormProps> = ({
     } else if (item.type === 'pass' && item.passDetails) {
       return sum + item.passDetails.cost;
     } else if (item.type === 'accommodation' && item.accommodationDetails) {
-        return sum + (item.accommodationDetails.cost * item.accommodationDetails.quantity);
+      return sum + (item.accommodationDetails.cost * item.accommodationDetails.quantity);
     }
     return sum;
   }, 0);
@@ -82,6 +82,7 @@ const WorkshopRegistrationForm: React.FC<WorkshopRegistrationFormProps> = ({
       if (!cartItems || cartItems.length === 0) return;
       const accommodationItem = cartItems.find(item => item.type === 'accommodation');
       const events = cartItems.filter(item => item.type === 'event' && item.eventDetails);
+      const passes = cartItems.filter(item => item.type === 'pass' && item.passDetails);
       let accountIdToFetch: number | undefined;
 
       if (accommodationItem) {
@@ -99,16 +100,32 @@ const WorkshopRegistrationForm: React.FC<WorkshopRegistrationFormProps> = ({
 
       if (!accountIdToFetch && events.length > 0) {
         const eventWithHighestFee = events.reduce((max, event) => {
-           const maxFee = max.eventDetails?.registrationFees || 0;
-           const currFee = event.eventDetails?.registrationFees || 0;
-           return currFee > maxFee ? event : max;
+          const maxFee = max.eventDetails?.registrationFees || 0;
+          const currFee = event.eventDetails?.registrationFees || 0;
+          return currFee > maxFee ? event : max;
         }, events[0]);
         if (eventWithHighestFee && eventWithHighestFee.eventId) {
-            const response = await axios.get(`${API_BASE_URL}/accounts/event/${eventWithHighestFee.eventId}`);
+          const response = await axios.get(`${API_BASE_URL}/accounts/event/${eventWithHighestFee.eventId}`);
+          if (response.data) {
+            setAccountDetails(response.data);
+          }
+          return;
+        }
+      }
+
+      // Check for Passes if no accommodation or events priority
+      if (!accountIdToFetch && passes.length > 0) {
+        const pass = passes[0];
+        if (pass.passId) {
+          try {
+            const response = await axios.get(`${API_BASE_URL}/accounts/pass/${pass.passId}`);
             if (response.data) {
-                setAccountDetails(response.data);
+              setAccountDetails(response.data);
             }
             return;
+          } catch (error) {
+            console.error('Error fetching pass account details:', error);
+          }
         }
       }
 
@@ -124,8 +141,8 @@ const WorkshopRegistrationForm: React.FC<WorkshopRegistrationFormProps> = ({
           console.error('Error fetching account details for accommodation:', error);
           setError('Could not fetch account details for accommodation.');
         }
-      } else if (events.length === 0) {
-        setError('No account details could be fetched. Please add an event or accommodation with an associated account to your cart.');
+      } else if (events.length === 0 && passes.length === 0) {
+        setError('No account details could be fetched. Please add an event, pass, or accommodation with an associated account to your cart.');
       }
     };
 
@@ -166,7 +183,7 @@ const WorkshopRegistrationForm: React.FC<WorkshopRegistrationFormProps> = ({
     try {
       const formData = new FormData();
       formData.append('userId', user.id.toString());
-      
+
       const eventIds = cartItems.filter(item => item.type === 'event').map(item => item.eventId);
       const passIds = cartItems.filter(item => item.type === 'pass').map(item => item.passId);
       const accommodationItem = cartItems.find(item => item.type === 'accommodation');
@@ -174,10 +191,10 @@ const WorkshopRegistrationForm: React.FC<WorkshopRegistrationFormProps> = ({
       if (accommodationItem) {
         formData.append('accommodation', JSON.stringify(accommodationItem));
       }
-      
+
       formData.append('eventIds', JSON.stringify(eventIds));
       formData.append('passIds', JSON.stringify(passIds));
-      
+
       formData.append('transactionId', transactionId);
       formData.append('transactionTime', transactionTime);
       formData.append('transactionDate', transactionDate);
@@ -210,11 +227,11 @@ const WorkshopRegistrationForm: React.FC<WorkshopRegistrationFormProps> = ({
           <div className="space-y-4 mb-4">
             {cartItems && cartItems.map(item => {
               if (item.type === 'event' && item.eventDetails) {
-                 const originalPrice = item.eventDetails.registrationFees;
-                 const discount = item.eventDetails.discountPercentage || 0;
-                 const discountedPrice = Math.floor(originalPrice * (1 - discount / 100));
+                const originalPrice = item.eventDetails.registrationFees;
+                const discount = item.eventDetails.discountPercentage || 0;
+                const discountedPrice = Math.floor(originalPrice * (1 - discount / 100));
 
-                 return (
+                return (
                   <div key={item.cartId} className="flex justify-between items-center text-gray-300 border-b border-gray-700 pb-2 last:border-0">
                     <div>
                       <span className="block font-medium">{item.eventDetails.eventName}</span>
@@ -233,25 +250,25 @@ const WorkshopRegistrationForm: React.FC<WorkshopRegistrationFormProps> = ({
                       )}
                     </div>
                   </div>
-                 );
+                );
               } else if (item.type === 'pass' && item.passDetails) {
-                 return (
+                return (
                   <div key={item.cartId} className="flex justify-between items-center text-gray-300 border-b border-gray-700 pb-2 last:border-0">
                     <span className="font-medium">{item.passDetails.name}</span>
                     <span>₹{item.passDetails.cost}</span>
                   </div>
-                 );
+                );
               } else if (item.type === 'accommodation' && item.accommodationDetails) {
                 return (
-                 <div key={item.cartId} className="flex justify-between items-center text-gray-300 border-b border-gray-700 pb-2 last:border-0">
+                  <div key={item.cartId} className="flex justify-between items-center text-gray-300 border-b border-gray-700 pb-2 last:border-0">
                     <div>
-                        <span className="font-medium">{item.accommodationDetails.name}</span>
-                        <span className="block text-xs text-gray-400">Quantity: {item.accommodationDetails.quantity}</span>
+                      <span className="font-medium">{item.accommodationDetails.name}</span>
+                      <span className="block text-xs text-gray-400">Quantity: {item.accommodationDetails.quantity}</span>
                     </div>
-                   <span>₹{item.accommodationDetails.cost * item.accommodationDetails.quantity}</span>
-                 </div>
+                    <span>₹{item.accommodationDetails.cost * item.accommodationDetails.quantity}</span>
+                  </div>
                 );
-             }
+              }
               return null;
             })}
           </div>
@@ -276,7 +293,7 @@ const WorkshopRegistrationForm: React.FC<WorkshopRegistrationFormProps> = ({
               {qrCodeUrl && (
                 <div className="mt-4 flex justify-center">
                   <object data={qrCodeUrl} type="application/pdf" width="200px" height="200px" className="rounded-lg overflow-hidden border border-white">
-                     <p>Your browser does not support PDFs. <a href={qrCodeUrl} target="_blank" rel="noreferrer" className="text-blue-400 underline">View QR Code</a></p>
+                    <p>Your browser does not support PDFs. <a href={qrCodeUrl} target="_blank" rel="noreferrer" className="text-blue-400 underline">View QR Code</a></p>
                   </object>
                 </div>
               )}
@@ -286,9 +303,9 @@ const WorkshopRegistrationForm: React.FC<WorkshopRegistrationFormProps> = ({
               </p>
             </div>
           ) : (
-             <div className="flex items-center justify-center h-40">
-                <p className="text-gray-400 animate-pulse">Loading account details...</p>
-             </div>
+            <div className="flex items-center justify-center h-40">
+              <p className="text-gray-400 animate-pulse">Loading account details...</p>
+            </div>
           )}
 
           <form onSubmit={handleSubmit}>

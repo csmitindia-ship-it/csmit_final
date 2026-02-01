@@ -35,6 +35,9 @@ import ManageAccommodationPage from "./pages/ManageAccommodationPage.tsx";
 import AccommodationPage from "./pages/AccommodationPage.tsx";
 import AdminUserRegistrationPage from "./pages/AdminUserRegistrationPage.tsx";
 import VerifyTransactionPage from "./pages/VerifyTransactionPage.tsx";
+import SendConfirmationEmailPage from "./pages/SendConfirmationEmailPage.tsx";
+import BulkSendConfirmationEmailPage from "./pages/BulkSendConfirmationEmailPage";
+import ManageOfferPage from "./pages/ManageOfferPage.tsx";
 
 export default function App() {
   const [showIntro, setShowIntro] = useState(sessionStorage.getItem("introSeen") !== "true");
@@ -137,6 +140,9 @@ export default function App() {
             <Route path="manage-passes" element={<ManagePassesPage />} />
             <Route path="register-user" element={<AdminUserRegistrationPage />} />
             <Route path="verify-transaction" element={<VerifyTransactionPage />} />
+            <Route path="send-confirmation-email/:userId" element={<SendConfirmationEmailPage />} />
+            <Route path="bulk-send-confirmation" element={<BulkSendConfirmationEmailPage />} />
+            <Route path="manage-offer" element={<ManageOfferPage />} />
           </Route>
         </Route>
 

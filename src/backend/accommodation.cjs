@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 
-module.exports = function(db) {
+module.exports = function (db) {
   // GET all accommodation details
   router.get('/', async (req, res) => {
     try {
@@ -61,7 +61,7 @@ module.exports = function(db) {
     }
 
     if (quantity <= 0) {
-      return res.status(400).json({ message: 'Quantity must be positive.'});
+      return res.status(400).json({ message: 'Quantity must be positive.' });
     }
 
     try {
@@ -104,6 +104,30 @@ module.exports = function(db) {
     }
   });
 
+  // Get all accommodation bookings (for admin)
+  router.get('/bookings/all', async (req, res) => {
+    console.log('GET /accommodation/bookings/all - Fetching all bookings...');
+    try {
+      const [bookings] = await db.execute(
+        `SELECT ab.*, u.fullName, u.email, u.mobile 
+         FROM accommodation_bookings ab 
+         JOIN users u ON ab.userId = u.id 
+         ORDER BY ab.createdAt DESC`
+      );
+      console.log(`Fetched ${bookings ? bookings.length : 'null'} bookings.`);
+
+      if (!bookings) {
+        console.warn('Bookings is null/undefined!');
+        return res.json([]);
+      }
+
+      res.json(bookings);
+    } catch (error) {
+      console.error('Failed to get all accommodation bookings:', error);
+      res.status(500).json({ message: 'Failed to get all accommodation bookings.' });
+    }
+  });
+
   // GET user's accommodation booking
   router.get('/bookings/:userId', async (req, res) => {
     const { userId } = req.params;
@@ -123,30 +147,62 @@ module.exports = function(db) {
     }
   });
 
-  router.get('/bookings/all', async (req, res) => {
-    try {
-      const [bookings] = await db.execute(
-        `SELECT ab.*, u.fullName, u.email, u.mobile 
-         FROM accommodation_bookings ab 
-         JOIN users u ON ab.userId = u.id 
-         ORDER BY ab.createdAt DESC`
-      );
-      res.json(bookings);
-    } catch (error) {
-      console.error('Failed to get all accommodation bookings:', error);
-      res.status(500).json({ message: 'Failed to get all accommodation bookings.' });
-    }
-  });
 
   // Verify an accommodation booking
   router.put('/bookings/:bookingId/verify', async (req, res) => {
     const { bookingId } = req.params;
     try {
-      await db.execute(
-        'UPDATE accommodation_bookings SET status = "confirmed", isVerified = true WHERE id = ?',
-        [bookingId]
-      );
-      res.status(200).json({ message: 'Accommodation booking verified successfully.' });
+      const connection = await db.getConnection();
+      await connection.beginTransaction();
+
+      try {
+        const [booking] = await connection.execute('SELECT * FROM accommodation_bookings WHERE id = ?', [bookingId]);
+
+        if (booking.length === 0) {
+          await connection.rollback();
+          return res.status(404).json({ message: 'Booking not found.' });
+        }
+
+        const { status, gender, quantity } = booking[0];
+
+        if (status === 'confirmed') {
+          await connection.rollback();
+          return res.status(200).json({ message: 'Already verified.' });
+        }
+
+        if (status === 'rejected') {
+          // Check availability again
+          const [[accommodation]] = await connection.execute(
+            'SELECT available_rooms FROM accommodation WHERE gender = ?',
+            [gender]
+          );
+
+          if (!accommodation || accommodation.available_rooms < quantity) {
+            await connection.rollback();
+            return res.status(409).json({ message: 'Not enough rooms available to re-verify.' });
+          }
+
+          // Deduct rooms
+          await connection.execute(
+            'UPDATE accommodation SET available_rooms = available_rooms - ? WHERE gender = ?',
+            [quantity, gender]
+          );
+        }
+
+        // Update status
+        await connection.execute(
+          'UPDATE accommodation_bookings SET status = "confirmed" WHERE id = ?',
+          [bookingId]
+        );
+
+        await connection.commit();
+        res.status(200).json({ message: 'Accommodation booking verified successfully.' });
+      } catch (error) {
+        await connection.rollback();
+        throw error;
+      } finally {
+        connection.release();
+      }
     } catch (error) {
       console.error('Failed to verify accommodation booking:', error);
       res.status(500).json({ message: 'Failed to verify accommodation booking.' });
@@ -157,55 +213,172 @@ module.exports = function(db) {
   router.put('/bookings/user/:userId/verify', async (req, res) => {
     const { userId } = req.params;
     try {
-      // First, find the booking id for the user
-      const [booking] = await db.execute('SELECT id FROM accommodation_bookings WHERE userId = ?', [userId]);
-      if (booking.length === 0) {
-        return res.status(404).json({ message: 'No accommodation booking found for this user.' });
-      }
-      const bookingId = booking[0].id;
+      const connection = await db.getConnection();
+      await connection.beginTransaction();
 
-      // Now, verify the booking
-      await db.execute(
-        'UPDATE accommodation_bookings SET status = "confirmed", isVerified = true WHERE id = ?',
-        [bookingId]
-      );
-      res.status(200).json({ message: 'Accommodation booking verified successfully.' });
+      try {
+        const [booking] = await connection.execute('SELECT * FROM accommodation_bookings WHERE userId = ?', [userId]);
+
+        // --- RECOVERY LOGIC START ---
+        if (booking.length === 0) {
+          // Attempt to recover from registrations table
+          // First get user email since registrations table doesn't have userId
+          const [userRecord] = await connection.execute('SELECT email FROM users WHERE id = ?', [userId]);
+
+          if (userRecord.length === 0) {
+            await connection.rollback();
+            return res.status(404).json({ message: 'User not found.' });
+          }
+          const userEmail = userRecord[0].email;
+
+          const [registration] = await connection.execute(
+            'SELECT transactionAmount, transactionId FROM registrations WHERE userEmail = ? AND symposium = "Accommodation" ORDER BY id DESC LIMIT 1',
+            [userEmail]
+          );
+
+          if (registration.length === 0) {
+            await connection.rollback();
+            return res.status(404).json({ message: 'No accommodation booking or registration found for this user.' });
+          }
+
+          const amount = registration[0].transactionAmount;
+          const recoveredTransactionId = registration[0].transactionId || "RECOVERED";
+
+          // Fetch current fees to deduce gender/quantity
+          const [accommodations] = await connection.execute('SELECT gender, fees, available_rooms FROM accommodation');
+
+          let matchedGender = null;
+          let matchedQuantity = 0;
+          let matchCount = 0;
+
+          for (const acc of accommodations) {
+            if (acc.fees > 0 && amount % acc.fees === 0) {
+              const qty = amount / acc.fees;
+              if (qty > 0) {
+                matchedGender = acc.gender;
+                matchedQuantity = qty;
+                matchCount++;
+              }
+            }
+          }
+
+          if (matchCount === 1 && matchedGender) {
+            // Unique match found, recreate booking
+            const accInfo = accommodations.find(a => a.gender === matchedGender);
+
+            if (accInfo.available_rooms < matchedQuantity) {
+              await connection.rollback();
+              return res.status(409).json({ message: 'Found registration but not enough rooms to re-book.' });
+            }
+
+            // Insert new confirmed booking
+            // Corrected order: quantity is number, transactionId is string
+            await connection.execute(
+              'INSERT INTO accommodation_bookings (userId, gender, status, quantity, transactionId) VALUES (?, ?, "confirmed", ?, ?)',
+              [userId, matchedGender, matchedQuantity, recoveredTransactionId]
+            );
+
+            // Deduct inventory
+            await connection.execute(
+              'UPDATE accommodation SET available_rooms = available_rooms - ? WHERE gender = ?',
+              [matchedQuantity, matchedGender]
+            );
+
+            await connection.commit();
+            return res.status(200).json({ message: 'Accommodation booking recovered and verified successfully.' });
+
+          } else if (matchCount > 1) {
+            await connection.rollback();
+            return res.status(409).json({ message: 'Cannot recover booking: Ambiguous gender/quantity based on amount.' });
+          } else {
+            await connection.rollback();
+            return res.status(404).json({ message: 'Cannot recover booking: Amount does not match current fees.' });
+          }
+        }
+        // --- RECOVERY LOGIC END ---
+
+        const bookingId = booking[0].id; // Use primary key for updates
+        const { status, gender, quantity } = booking[0];
+
+        if (status === 'confirmed') {
+          await connection.rollback();
+          return res.status(200).json({ message: 'Already verified.' });
+        }
+
+        if (status === 'rejected') {
+          // Check availability again
+          const [[accommodation]] = await connection.execute(
+            'SELECT available_rooms FROM accommodation WHERE gender = ?',
+            [gender]
+          );
+
+          if (!accommodation || accommodation.available_rooms < quantity) {
+            await connection.rollback();
+            return res.status(409).json({ message: 'Not enough rooms available to re-verify.' });
+          }
+
+          // Deduct rooms
+          await connection.execute(
+            'UPDATE accommodation SET available_rooms = available_rooms - ? WHERE gender = ?',
+            [quantity, gender]
+          );
+        }
+
+        // Update status
+        await connection.execute(
+          'UPDATE accommodation_bookings SET status = "confirmed" WHERE id = ?',
+          [bookingId]
+        );
+
+        await connection.commit();
+        res.status(200).json({ message: 'Accommodation booking verified successfully.' });
+      } catch (error) {
+        await connection.rollback();
+        throw error;
+      } finally {
+        connection.release();
+      }
     } catch (error) {
       console.error('Failed to verify accommodation booking by user:', error);
       res.status(500).json({ message: 'Failed to verify accommodation booking.' });
     }
   });
 
-  // Delete an accommodation booking by userId (for rejection)
+  // Reject (Soft Delete) an accommodation booking by userId
   router.delete('/bookings/user/:userId', async (req, res) => {
     const { userId } = req.params;
     try {
-      // First, find the booking for the user to get quantity and gender
-      const [booking] = await db.execute('SELECT quantity, gender FROM accommodation_bookings WHERE userId = ?', [userId]);
+      // First, find the booking
+      const [booking] = await db.execute('SELECT quantity, gender, status FROM accommodation_bookings WHERE userId = ?', [userId]);
       if (booking.length === 0) {
-        return res.status(404).json({ message: 'No accommodation booking found for this user to delete.' });
+        return res.status(404).json({ message: 'No accommodation booking found for this user to reject.' });
       }
-      const { quantity, gender } = booking[0];
+      const { quantity, gender, status } = booking[0];
+
+      if (status === 'rejected') {
+        return res.status(200).json({ message: 'Already rejected.' });
+      }
 
       // Start transaction
       const connection = await db.getConnection();
       await connection.beginTransaction();
 
       try {
-        // Delete the booking
-        await connection.execute('DELETE FROM accommodation_bookings WHERE userId = ?', [userId]);
+        // Soft delete: Update status to 'rejected'
+        await connection.execute('UPDATE accommodation_bookings SET status = "rejected" WHERE userId = ?', [userId]);
 
-        // Restore the room count
+        // Restore the room count (only if it was pending or confirmed, which implies rooms were held)
+        // Logic assumption: Pending and Confirmed bookings hold rooms. Rejected/Cancelled do not.
+        // Since we checked status != rejected, we assume we hold rooms.
         await connection.execute(
           'UPDATE accommodation SET available_rooms = available_rooms + ? WHERE gender = ?',
           [quantity, gender]
         );
-
         await connection.commit();
-        res.status(200).json({ message: 'Accommodation booking rejected and removed successfully.' });
+        res.status(200).json({ message: 'Accommodation booking rejected successfully.' });
       } catch (error) {
         await connection.rollback();
-        throw error; // Let the outer catch handle it
+        throw error;
       } finally {
         connection.release();
       }
@@ -215,6 +388,7 @@ module.exports = function(db) {
     }
   });
 
+  // Book accommodation (Manual/Direct)
   router.post('/book', async (req, res) => {
     const { userId, gender, quantity, transactionId } = req.body;
 
@@ -228,43 +402,41 @@ module.exports = function(db) {
       await connection.beginTransaction();
 
       const [[accommodation]] = await connection.execute(
-          'SELECT fees, available_rooms FROM accommodation WHERE gender = ?',
-          [gender]
+        'SELECT fees, available_rooms FROM accommodation WHERE gender = ?',
+        [gender]
       );
 
       if (!accommodation || accommodation.available_rooms < quantity) {
-          throw new Error(`Not enough rooms available for ${gender}.`);
+        throw new Error(`Not enough rooms available for ${gender}.`);
       }
 
       const [existingBooking] = await connection.execute(
-          'SELECT id FROM accommodation_bookings WHERE userId = ?',
-          [userId]
+        'SELECT id FROM accommodation_bookings WHERE userId = ?',
+        [userId]
       );
 
       if (existingBooking.length > 0) {
-          // If a booking exists, we don't create a new one.
-          // This assumes a user can only have one accommodation booking.
-          await connection.commit(); // commit transaction to not leave it open
-          return res.status(200).json({ message: 'Accommodation already booked.' });
+        await connection.commit();
+        return res.status(200).json({ message: 'Accommodation already booked.' });
       }
 
+      // FIX: Removed 'isVerified' column and value
       await connection.execute(
-          'INSERT INTO accommodation_bookings (userId, gender, status, transactionId, quantity, isVerified) VALUES (?, ?, ?, ?, ?, ?)',
-          [userId, gender, 'pending', transactionId, quantity, false]
+        'INSERT INTO accommodation_bookings (userId, gender, status, transactionId, quantity) VALUES (?, ?, ?, ?, ?)',
+        [userId, gender, 'pending', transactionId, quantity]
       );
 
       const [updateResult] = await connection.execute(
-          'UPDATE accommodation SET available_rooms = available_rooms - ? WHERE gender = ?',
-          [quantity, gender]
+        'UPDATE accommodation SET available_rooms = available_rooms - ? WHERE gender = ?',
+        [quantity, gender]
       );
 
       if (updateResult.affectedRows === 0) {
-          throw new Error(`Failed to update accommodation room count for ${gender}.`);
+        throw new Error(`Failed to update accommodation room count for ${gender}.`);
       }
 
       await connection.commit();
       res.status(201).json({ message: 'Accommodation booked successfully.' });
-
     } catch (error) {
       if (connection) await connection.rollback();
       res.status(500).json({ message: error.message || 'Failed to book accommodation.' });

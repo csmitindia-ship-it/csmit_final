@@ -43,7 +43,7 @@ function createTimerRouter(db) {
         res.json(rows[0]); // Send just the timer object: { "end_time": "..." }
       } else {
         console.log('No active timer found.');
-        res.json(null); // Send null as the response body
+        res.json({ end_time: null }); // Send an object with null end_time
       }
     } catch (error) {
       // This will log the specific database error

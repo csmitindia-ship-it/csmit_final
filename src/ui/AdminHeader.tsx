@@ -34,6 +34,8 @@ const AdminHeader: React.FC = () => {
     { label: 'Manage Passes', onClick: () => { navigate('/admin/manage-passes'); setIsMobileMenuOpen(false); } },
     { label: 'Register User', onClick: () => { navigate('/admin/register-user'); setIsMobileMenuOpen(false); } },
     { label: 'Verify Transaction', onClick: () => { navigate('/admin/verify-transaction'); setIsMobileMenuOpen(false); } },
+    { label: 'Bulk Send Confirmation', onClick: () => { navigate('/admin/bulk-send-confirmation'); setIsMobileMenuOpen(false); } },
+    { label: 'Manage Offer', onClick: () => { navigate('/admin/manage-offer'); setIsMobileMenuOpen(false); } },
   ];
 
   const desktopMenu = (

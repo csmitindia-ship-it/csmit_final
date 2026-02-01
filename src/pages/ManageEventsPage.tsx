@@ -123,9 +123,22 @@ const Dropdown: React.FC<{
   </select>
 );
 
+
+type Pass = {
+  id: number;
+  name: string;
+  cost: number;
+  pass_limit: number;
+  description: string;
+  accountId: number;
+  discountPercentage?: number;
+  discountReason?: string | null;
+};
+
 // --- Main App ---
 const App: React.FC = () => {
   const [events, setEvents] = useState<Event[]>([]);
+  const [passes, setPasses] = useState<Pass[]>([]); // New State
   const [activeSymposium, setActiveSymposium] = useState<'Enigma' | 'Carteblanche'>('Enigma');
   const [newEvent, setNewEvent] = useState({
     eventName: '',
@@ -155,26 +168,34 @@ const App: React.FC = () => {
 
   // --- Discount State ---
   const [isDiscountModalOpen, setIsDiscountModalOpen] = useState(false);
+  const [discountType, setDiscountType] = useState<'Event' | 'Pass'>('Event'); // New Toggle
   const [discountForm, setDiscountForm] = useState({
     category: '',
     percentage: 0,
     reason: '',
     symposium: 'Enigma' as 'Enigma' | 'Carteblanche',
-    isForMIT: false
+    isForMIT: false,
+    selectedPassId: '' // New Field
   });
 
   const fetchAccountDetails = async () => {
     try {
       const response = await fetch(`${API_BASE_URL}/accounts`);
-      if (!response.ok) throw new Error('Failed to fetch account details');
       const data = await response.json();
       setAccounts(data.length ? data : []);
     } catch (err) {
       console.error(err);
-      setModalTitle('Error');
-      setModalMessage('Failed to load accounts. Check backend.');
-      setShowConfirmButton(false);
-      setIsModalOpen(true);
+    }
+  };
+
+  const fetchPasses = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/passes`);
+      if (!response.ok) throw new Error('Failed to fetch passes');
+      const data = await response.json();
+      setPasses(data);
+    } catch (err) {
+      console.error(err);
     }
   };
 
@@ -225,27 +246,45 @@ const App: React.FC = () => {
     fetchEvents();
     fetchAccountDetails();
     fetchOrganizers();
+    fetchPasses(); // Fetch passes
   }, []);
 
   // --- Discount Handler ---
   const handleApplyDiscount = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/events/apply-discount`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          symposiumName: discountForm.symposium,
-          eventCategory: discountForm.category,
-          discountPercentage: discountForm.percentage,
-          discountReason: discountForm.isForMIT ? '' : discountForm.reason,
-          isForMIT: discountForm.isForMIT
-        }),
-      });
-
-      if (!response.ok) throw new Error('Failed to apply discount');
+      if (discountType === 'Event') {
+        const response = await fetch(`${API_BASE_URL}/events/apply-discount`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            symposiumName: discountForm.symposium,
+            eventCategory: discountForm.category,
+            discountPercentage: discountForm.percentage,
+            discountReason: discountForm.isForMIT ? '' : discountForm.reason,
+            isForMIT: discountForm.isForMIT
+          }),
+        });
+        if (!response.ok) throw new Error('Failed to apply discount');
+        setModalMessage(`Discount applied to all ${discountForm.category} events in ${discountForm.symposium}.`);
+      } else {
+        // Apply to Pass
+        if (!discountForm.selectedPassId) throw new Error("Please select a pass.");
+        const response = await fetch(`${API_BASE_URL}/passes/${discountForm.selectedPassId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            discountPercentage: discountForm.percentage,
+            discountReason: discountForm.isForMIT ? '' : discountForm.reason
+            // Note: isForMIT logic for passes depends on backend support or if we want to reuse the reason string for that logic.
+            // For now, assuming reason string is enough or we just save the percentage.
+          })
+        });
+        if (!response.ok) throw new Error('Failed to update pass discount');
+        setModalMessage(`Discount applied to pass.`);
+        fetchPasses(); // Refresh passes
+      }
 
       setModalTitle('Success');
-      setModalMessage(`Discount applied to all ${discountForm.category} events in ${discountForm.symposium}.`);
       setShowConfirmButton(false);
       setIsModalOpen(true);
       setIsDiscountModalOpen(false);
@@ -253,7 +292,7 @@ const App: React.FC = () => {
     } catch (err) {
       console.error(err);
       setModalTitle('Error');
-      setModalMessage('Failed to apply discount.');
+      setModalMessage(err instanceof Error ? err.message : 'Failed to apply discount.');
       setShowConfirmButton(false);
       setIsModalOpen(true);
     }
@@ -456,7 +495,7 @@ const App: React.FC = () => {
                     Carteblanche
                   </button>
                 </div>
-                
+
                 {/* Discount Button */}
                 <button
                   onClick={() => setIsDiscountModalOpen(true)}
@@ -716,29 +755,65 @@ const App: React.FC = () => {
         onConfirm={handleApplyDiscount}
       >
         <div className="space-y-4 mt-4 text-black">
-          <label className="block text-gray-300 mb-1 text-sm">Symposium</label>
-          <select
-            className="w-full px-4 py-2 rounded border bg-gray-100"
-            value={discountForm.symposium}
-            onChange={(e) => setDiscountForm({ ...discountForm, symposium: e.target.value as any })}
-          >
-            <option value="Enigma">Enigma</option>
-            <option value="Carteblanche">Carteblanche</option>
-          </select>
+          {/* Toggle Type */}
+          <div className="flex space-x-4 mb-4">
+            <button
+              onClick={() => setDiscountType('Event')}
+              className={`px-4 py-2 rounded ${discountType === 'Event' ? 'bg-purple-600 text-white' : 'bg-gray-200'}`}
+            >
+              Events
+            </button>
+            <button
+              onClick={() => setDiscountType('Pass')}
+              className={`px-4 py-2 rounded ${discountType === 'Pass' ? 'bg-purple-600 text-white' : 'bg-gray-200'}`}
+            >
+              Passes
+            </button>
+          </div>
 
-          <label className="block text-gray-300 mb-1 text-sm">Category</label>
-          <select
-            className="w-full px-4 py-2 rounded border bg-gray-100"
-            value={discountForm.category}
-            onChange={(e) => setDiscountForm({ ...discountForm, category: e.target.value })}
-          >
-            <option value="" disabled>Select Category</option>
-            <option value="Workshop">Workshop</option>
-            <option value="Paper Presentation">Paper Presentation</option>
-            <option value="Technical Events">Technical Events</option>
-            <option value="Non-Technical Events">Non-Technical Events</option>
-            <option value="Other">Other</option>
-          </select>
+          {discountType === 'Event' && (
+            <>
+              <label className="block text-gray-300 mb-1 text-sm">Symposium</label>
+              <select
+                className="w-full px-4 py-2 rounded border bg-gray-100"
+                value={discountForm.symposium}
+                onChange={(e) => setDiscountForm({ ...discountForm, symposium: e.target.value as any })}
+              >
+                <option value="Enigma">Enigma</option>
+                <option value="Carteblanche">Carteblanche</option>
+              </select>
+
+              <label className="block text-gray-300 mb-1 text-sm">Category</label>
+              <select
+                className="w-full px-4 py-2 rounded border bg-gray-100"
+                value={discountForm.category}
+                onChange={(e) => setDiscountForm({ ...discountForm, category: e.target.value })}
+              >
+                <option value="" disabled>Select Category</option>
+                <option value="Workshop">Workshop</option>
+                <option value="Paper Presentation">Paper Presentation</option>
+                <option value="Technical Events">Technical Events</option>
+                <option value="Non-Technical Events">Non-Technical Events</option>
+                <option value="Other">Other</option>
+              </select>
+            </>
+          )}
+
+          {discountType === 'Pass' && (
+            <>
+              <label className="block text-gray-300 mb-1 text-sm">Select Pass</label>
+              <select
+                className="w-full px-4 py-2 rounded border bg-gray-100"
+                value={discountForm.selectedPassId}
+                onChange={(e) => setDiscountForm({ ...discountForm, selectedPassId: e.target.value })}
+              >
+                <option value="" disabled>Select Pass</option>
+                {passes.map(pass => (
+                  <option key={pass.id} value={pass.id}>{pass.name} (Current Cost: ₹{pass.cost})</option>
+                ))}
+              </select>
+            </>
+          )}
 
           <label className="block text-gray-300 mb-1 text-sm">Discount Percentage</label>
           <input

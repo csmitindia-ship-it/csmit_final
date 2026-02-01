@@ -72,7 +72,7 @@ const Header: React.FC<HeaderProps> = ({ setIsLoginModalOpen, setIsSignUpModalOp
         setModalTitle("Success");
         setModalMessage(`Successfully started ${symposiumName}.`);
         setIsModalOpen(true);
-        const statusResponse = await fetch(`${API_BASE_URL}/symposium/stop`);
+        const statusResponse = await fetch(`${API_BASE_URL}/symposium/status`);
         const data = await statusResponse.json();
         if (data) {
           setSymposiumStatus(data);
@@ -92,7 +92,7 @@ const Header: React.FC<HeaderProps> = ({ setIsLoginModalOpen, setIsSignUpModalOp
 
   const handleStopSymposium = async (symposiumName: string) => {
     try {
-      const response = await fetch("/api/symposium/stop", {
+      const response = await fetch(`${API_BASE_URL}/symposium/stop`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ symposiumName }),
@@ -101,7 +101,7 @@ const Header: React.FC<HeaderProps> = ({ setIsLoginModalOpen, setIsSignUpModalOp
         setModalTitle("Success");
         setModalMessage(`${symposiumName} has been stopped.`);
         setIsModalOpen(true);
-        const statusResponse = await fetch("/api/symposium/status");
+        const statusResponse = await fetch(`${API_BASE_URL}/symposium/status`);
         const data = await statusResponse.json();
         if (data) {
           setSymposiumStatus(data);

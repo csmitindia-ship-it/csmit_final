@@ -57,9 +57,38 @@ async function createTablesIfNotExists() {
         fullName VARCHAR(255),
         email VARCHAR(255) UNIQUE,
         password VARCHAR(255),
+        dob DATE,
+        mobile VARCHAR(20),
+        college VARCHAR(255),
+        department VARCHAR(255),
+        yearOfPassing INT,
+        state VARCHAR(255),
+        district VARCHAR(255),
         createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
+
+    // Helper function to check and add column if missing
+    async function addColumnIfNotExists(tableName, columnName, columnDef) {
+      const [columns] = await db.execute(`
+        SELECT * FROM INFORMATION_SCHEMA.COLUMNS
+        WHERE TABLE_SCHEMA = 'csmit_db' AND TABLE_NAME = ? AND COLUMN_NAME = ?
+      `, [tableName, columnName]);
+
+      if (columns.length === 0) {
+        console.log(`Adding missing column '${columnName}' to '${tableName}'...`);
+        await db.execute(`ALTER TABLE ${tableName} ADD COLUMN ${columnName} ${columnDef}`);
+      }
+    }
+
+    // Ensure users table has all new columns (Migrate existing data)
+    await addColumnIfNotExists('users', 'dob', 'DATE');
+    await addColumnIfNotExists('users', 'mobile', 'VARCHAR(20)');
+    await addColumnIfNotExists('users', 'college', 'VARCHAR(255)');
+    await addColumnIfNotExists('users', 'department', 'VARCHAR(255)');
+    await addColumnIfNotExists('users', 'yearOfPassing', 'INT');
+    await addColumnIfNotExists('users', 'state', 'VARCHAR(255)');
+    await addColumnIfNotExists('users', 'district', 'VARCHAR(255)');
 
     await db.execute(`
       CREATE TABLE IF NOT EXISTS experiences (
@@ -85,6 +114,7 @@ async function createTablesIfNotExists() {
       );
     `);
 
+
     // Check if accountId column exists and add it if not
     const [columns] = await db.execute(`
       SELECT * FROM INFORMATION_SCHEMA.COLUMNS
@@ -96,6 +126,21 @@ async function createTablesIfNotExists() {
         ALTER TABLE passes
         ADD COLUMN accountId INT,
         ADD FOREIGN KEY (accountId) REFERENCES accounts(id) ON DELETE SET NULL;
+      `);
+    }
+
+    // Check if discountPercentage column exists and add it if not
+    const [discountCol] = await db.execute(`
+      SELECT * FROM INFORMATION_SCHEMA.COLUMNS
+      WHERE TABLE_SCHEMA = 'csmit_db' AND TABLE_NAME = 'passes' AND COLUMN_NAME = 'discountPercentage'
+    `);
+
+    if (discountCol.length === 0) {
+      console.log('Adding discount columns to passes table...');
+      await db.execute(`
+        ALTER TABLE passes
+        ADD COLUMN discountPercentage INT DEFAULT 0,
+        ADD COLUMN discountReason VARCHAR(255) NULL;
       `);
     }
 
@@ -262,12 +307,12 @@ async function createTablesIfNotExists() {
 
     const eventIdCol = registrationsColumns.find(c => c.COLUMN_NAME === 'eventId');
     if (eventIdCol && eventIdCol.IS_NULLABLE === 'NO') {
-        await db.execute(`ALTER TABLE registrations MODIFY COLUMN eventId INT NULL`);
+      await db.execute(`ALTER TABLE registrations MODIFY COLUMN eventId INT NULL`);
     }
 
     const symposiumCol = registrationsColumns.find(c => c.COLUMN_NAME === 'symposium');
     if (symposiumCol && symposiumCol.IS_NULLABLE === 'NO') {
-        await db.execute(`ALTER TABLE registrations MODIFY COLUMN symposium VARCHAR(255) NULL`);
+      await db.execute(`ALTER TABLE registrations MODIFY COLUMN symposium VARCHAR(255) NULL`);
     }
 
     await db.execute(`
@@ -309,6 +354,7 @@ async function createTablesIfNotExists() {
         eventId INT,
         passId INT,
         verified BOOLEAN NOT NULL,
+        confirmation_email_sent BOOLEAN DEFAULT FALSE,
         createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
       );
@@ -322,12 +368,22 @@ async function createTablesIfNotExists() {
 
     const hasVerifiedPassId = verifiedRegistrationsColumns.some(c => c.COLUMN_NAME === 'passId');
     if (!hasVerifiedPassId) {
-        await db.execute(`ALTER TABLE verified_registrations ADD COLUMN passId INT NULL AFTER eventId`);
+      await db.execute(`ALTER TABLE verified_registrations ADD COLUMN passId INT NULL AFTER eventId`);
     }
 
     const verifiedEventIdCol = verifiedRegistrationsColumns.find(c => c.COLUMN_NAME === 'eventId');
     if (verifiedEventIdCol && verifiedEventIdCol.IS_NULLABLE === 'NO') {
-        await db.execute(`ALTER TABLE verified_registrations MODIFY COLUMN eventId INT NULL`);
+      await db.execute(`ALTER TABLE verified_registrations MODIFY COLUMN eventId INT NULL`);
+    }
+
+    const hasConfirmationEmailSent = verifiedRegistrationsColumns.some(c => c.COLUMN_NAME === 'confirmation_email_sent');
+    if (!hasConfirmationEmailSent) {
+      await db.execute(`ALTER TABLE verified_registrations ADD COLUMN confirmation_email_sent BOOLEAN DEFAULT FALSE`);
+    }
+
+    const hasTransactionId = verifiedRegistrationsColumns.some(c => c.COLUMN_NAME === 'transactionId');
+    if (!hasTransactionId) {
+      await db.execute(`ALTER TABLE verified_registrations ADD COLUMN transactionId VARCHAR(255) NULL`);
     }
 
     await db.execute(`
@@ -352,7 +408,7 @@ async function createTablesIfNotExists() {
         \`id\` INT AUTO_INCREMENT,
         \`userId\` INT NOT NULL,
         \`gender\` ENUM('male', 'female') NOT NULL,
-        \`status\` ENUM('pending', 'confirmed', 'cancelled') NULL DEFAULT 'pending',
+        \`status\` ENUM('pending', 'confirmed', 'cancelled', 'rejected') NULL DEFAULT 'pending',
         \`transactionId\` VARCHAR(255) NULL,
         \`createdAt\` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
         PRIMARY KEY (\`id\`),
@@ -372,7 +428,7 @@ async function createTablesIfNotExists() {
     if (bookingColumns.length === 0) {
       await db.execute(`ALTER TABLE accommodation_bookings ADD COLUMN quantity INT NOT NULL DEFAULT 1`);
     }
-    
+
     await db.execute(`
       CREATE TABLE IF NOT EXISTS \`accommodation_cart\` (
         \`id\` INT AUTO_INCREMENT,
@@ -396,6 +452,15 @@ async function createTablesIfNotExists() {
     if (cartColumns.length === 0) {
       await db.execute(`ALTER TABLE accommodation_cart ADD COLUMN quantity INT NOT NULL DEFAULT 1`);
     }
+
+    await db.execute(`
+      CREATE TABLE IF NOT EXISTS offers (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        content TEXT,
+        active BOOLEAN DEFAULT TRUE,
+        createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
 
     console.log('✅ All tables created successfully');
 
@@ -438,6 +503,8 @@ async function startServer() {
   apiRouter.use('/timer', require('./timer.cjs')(db));
   apiRouter.use('/passes', require('./passes.cjs')(db));
   apiRouter.use('/accommodation', require('./accommodation.cjs')(db));
+  apiRouter.use('/email', require('./email.cjs')(db, transporter));
+  apiRouter.use('/offer', require('./offer.cjs')(db));
 
   app.use('/api', apiRouter);
 

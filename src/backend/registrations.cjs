@@ -21,8 +21,8 @@ module.exports = function (db, uploadTransactionScreenshot) {
             r.transactionAmount,
             r.transactionScreenshot,
             CASE
-                WHEN r.symposium = 'Accommodation' THEN (CASE WHEN ab.status = 'confirmed' THEN 1 ELSE NULL END)
-                ELSE vr.verified
+                WHEN r.symposium = 'Accommodation' THEN (CASE WHEN ab.status = 'confirmed' THEN 1 WHEN ab.status = 'rejected' THEN 0 ELSE NULL END)
+                ELSE IF(vr.verified IS NULL, NULL, IF(vr.verified, 1, 0))
             END as verified,
             u.college,
             CASE
@@ -88,21 +88,22 @@ module.exports = function (db, uploadTransactionScreenshot) {
       const transactionScreenshot = req.file ? req.file.buffer : null;
       const parsedEventIds = eventIds ? JSON.parse(eventIds) : [];
       const parsedPassIds = passIds ? JSON.parse(passIds) : [];
+      const accommodationInfo = req.body.accommodation ? JSON.parse(req.body.accommodation) : null;
 
-          const accommodationInfo = req.body.accommodation ? JSON.parse(req.body.accommodation) : null;
-          
-          if (!userId) return res.status(400).json({ message: 'Missing required field: userId.' });
-          if (parsedEventIds.length === 0 && parsedPassIds.length === 0 && !accommodationInfo) return res.status(400).json({ message: 'No items to register.' });
-              if (!transactionId) return res.status(400).json({ message: 'Missing required field: transactionId.' });
-              if (!transactionTime) return res.status(400).json({ message: 'Missing required field: transactionTime.' });          if (!transactionDate) return res.status(400).json({ message: 'Missing required field: transactionDate.' });
-          if (transactionAmount === undefined) return res.status(400).json({ message: 'Missing required field: transactionAmount.' });
-          if (!mobileNumber) return res.status(400).json({ message: 'Missing required field: mobileNumber.' });
-          if (!transactionScreenshot) return res.status(400).json({ message: 'Missing required field: transactionScreenshot.' });
-      
+      if (!userId) return res.status(400).json({ message: 'Missing required field: userId.' });
+      if (parsedEventIds.length === 0 && parsedPassIds.length === 0 && !accommodationInfo) return res.status(400).json({ message: 'No items to register.' });
+      if (!transactionId) return res.status(400).json({ message: 'Missing required field: transactionId.' });
+      if (!transactionTime) return res.status(400).json({ message: 'Missing required field: transactionTime.' });
+      if (!transactionDate) return res.status(400).json({ message: 'Missing required field: transactionDate.' });
+      if (transactionAmount === undefined) return res.status(400).json({ message: 'Missing required field: transactionAmount.' });
+      if (!mobileNumber) return res.status(400).json({ message: 'Missing required field: mobileNumber.' });
+      if (!transactionScreenshot) return res.status(400).json({ message: 'Missing required field: transactionScreenshot.' });
+
       let connection;
       try {
         connection = await db.getConnection();
         await connection.beginTransaction();
+
         // --- Check for unique transaction ID ---
         const [existingTransaction] = await connection.execute(
           'SELECT id FROM registrations WHERE transactionId = ?',
@@ -116,16 +117,15 @@ module.exports = function (db, uploadTransactionScreenshot) {
 
         // --- Get User Details ---
         const [[user]] = await connection.execute(
-            'SELECT fullName, email FROM users WHERE id = ?',
-            [userId]
+          'SELECT fullName, email FROM users WHERE id = ?',
+          [userId]
         );
         if (!user) {
-            throw new Error(`User with ID ${userId} not found.`);
+          throw new Error(`User with ID ${userId} not found.`);
         }
 
         // --- Process Event Registrations ---
         for (const eventId of parsedEventIds) {
-          // [MODIFIED] Fetch discountPercentage
           const [[event]] = await connection.execute(
             `SELECT eventName, registrationFees, discountPercentage, 'Enigma' as symposium 
              FROM enigma_events WHERE id = ? 
@@ -139,7 +139,6 @@ module.exports = function (db, uploadTransactionScreenshot) {
             continue;
           }
 
-          // [MODIFIED] Calculate effective fee with discount
           const discount = event.discountPercentage || 0;
           const effectiveFee = Math.floor(event.registrationFees * (1 - discount / 100));
 
@@ -152,7 +151,6 @@ module.exports = function (db, uploadTransactionScreenshot) {
             continue;
           }
 
-          // [MODIFIED] Insert effectiveFee instead of base registrationFees
           await connection.execute(
             `INSERT INTO registrations 
              (symposium, eventId, userName, userEmail, mobileNumber, transactionId, transactionUsername, transactionTime, transactionDate, transactionAmount, transactionScreenshot) 
@@ -167,7 +165,7 @@ module.exports = function (db, uploadTransactionScreenshot) {
               transactionUsername || user.fullName,
               transactionTime,
               transactionDate,
-              effectiveFee, // Storing the discounted price
+              effectiveFee,
               transactionScreenshot,
             ]
           );
@@ -175,41 +173,41 @@ module.exports = function (db, uploadTransactionScreenshot) {
 
         // --- Process Pass Registrations ---
         for (const passId of parsedPassIds) {
-            const [[pass]] = await connection.execute(
-                'SELECT name, cost FROM passes WHERE id = ?',
-                [passId]
-            );
-            if (!pass) {
-                console.warn(`Pass with ID ${passId} not found. Skipping.`);
-                continue;
-            }
+          const [[pass]] = await connection.execute(
+            'SELECT name, cost FROM passes WHERE id = ?',
+            [passId]
+          );
+          if (!pass) {
+            console.warn(`Pass with ID ${passId} not found. Skipping.`);
+            continue;
+          }
 
-            const [existing] = await connection.execute(
-                'SELECT id FROM registrations WHERE userEmail = ? AND passId = ?',
-                [user.email, passId]
-            );
-            if (existing.length > 0) {
-                console.warn(`Already registered for pass ${pass.name}. Skipping.`);
-                continue;
-            }
+          const [existing] = await connection.execute(
+            'SELECT id FROM registrations WHERE userEmail = ? AND passId = ?',
+            [user.email, passId]
+          );
+          if (existing.length > 0) {
+            console.warn(`Already registered for pass ${pass.name}. Skipping.`);
+            continue;
+          }
 
-            await connection.execute(
-                `INSERT INTO registrations 
+          await connection.execute(
+            `INSERT INTO registrations 
                  (passId, userName, userEmail, mobileNumber, transactionId, transactionUsername, transactionTime, transactionDate, transactionAmount, transactionScreenshot) 
                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-                [
-                  passId,
-                  user.fullName,
-                  user.email,
-                  mobileNumber,
-                  transactionId,
-                  transactionUsername || user.fullName,
-                  transactionTime,
-                  transactionDate,
-                  pass.cost,
-                  transactionScreenshot,
-                ]
-            );
+            [
+              passId,
+              user.fullName,
+              user.email,
+              mobileNumber,
+              transactionId,
+              transactionUsername || user.fullName,
+              transactionTime,
+              transactionDate,
+              pass.cost,
+              transactionScreenshot,
+            ]
+          );
         }
 
         // --- Process Accommodation Booking ---
@@ -220,15 +218,15 @@ module.exports = function (db, uploadTransactionScreenshot) {
           const quantity = accommodationDetails.quantity;
 
           const [[accommodation]] = await connection.execute(
-              'SELECT fees, available_rooms FROM accommodation WHERE gender = ?',
-              [gender]
+            'SELECT fees, available_rooms FROM accommodation WHERE gender = ?',
+            [gender]
           );
 
           console.log('Fetched accommodation details from DB:', accommodation);
 
           if (!accommodation || accommodation.available_rooms < quantity) {
-              console.error(`Not enough rooms available for ${gender}. Available: ${accommodation ? accommodation.available_rooms : 0}, Required: ${quantity}`);
-              throw new Error(`Not enough rooms available for ${gender}.`);
+            console.error(`Not enough rooms available for ${gender}. Available: ${accommodation ? accommodation.available_rooms : 0}, Required: ${quantity}`);
+            throw new Error(`Not enough rooms available for ${gender}.`);
           }
           const accommodationFee = accommodation.fees * quantity;
           console.log(`Calculated accommodation fee: ${accommodationFee}`);
@@ -254,33 +252,35 @@ module.exports = function (db, uploadTransactionScreenshot) {
           console.log('Successfully inserted into registrations table.');
 
           const [existingBooking] = await connection.execute(
-              'SELECT id FROM accommodation_bookings WHERE userId = ?',
-              [userId]
+            'SELECT id FROM accommodation_bookings WHERE userId = ?',
+            [userId]
           );
-    
+
           if (existingBooking.length === 0) {
             console.log('No existing accommodation booking found, creating a new one...');
+
+            // FIX: Removed 'isVerified' from the INSERT columns and values
             await connection.execute(
-                'INSERT INTO accommodation_bookings (userId, gender, status, transactionId, quantity, isVerified) VALUES (?, ?, ?, ?, ?, ?)',
-                [userId, gender, 'pending', transactionId, quantity, false]
+              'INSERT INTO accommodation_bookings (userId, gender, status, transactionId, quantity) VALUES (?, ?, ?, ?, ?)',
+              [userId, gender, 'pending', transactionId, quantity]
             );
             console.log('Successfully inserted into accommodation_bookings table.');
-    
+
             const [updateResult] = await connection.execute(
-                'UPDATE accommodation SET available_rooms = available_rooms - ? WHERE gender = ?',
-                [quantity, gender]
+              'UPDATE accommodation SET available_rooms = available_rooms - ? WHERE gender = ?',
+              [quantity, gender]
             );
             console.log('Updated available rooms count.');
-    
+
             if (updateResult.affectedRows === 0) {
-                console.error(`Failed to update accommodation room count for ${gender}.`);
-                throw new Error(`Failed to update accommodation room count for ${gender}.`);
+              console.error(`Failed to update accommodation room count for ${gender}.`);
+              throw new Error(`Failed to update accommodation room count for ${gender}.`);
             }
           } else {
             console.log('User already has an accommodation booking, skipping creation of new one.');
           }
         }
-        
+
         await connection.commit();
 
         res
@@ -523,7 +523,7 @@ module.exports = function (db, uploadTransactionScreenshot) {
       const fetchEventsByCategory = async (category, symposium) => {
         const eventTable = symposium === 'Enigma' ? 'enigma_events' : 'carte_blanche_events';
         const roundsTable = symposium === 'Enigma' ? 'enigma_rounds' : 'carte_blanche_rounds';
-        
+
         const [events] = await db.execute(`SELECT * FROM ${eventTable} WHERE eventCategory LIKE ?`, [`%${category}%`]);
 
         for (const event of events) {
