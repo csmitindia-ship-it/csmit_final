@@ -30,8 +30,6 @@ module.exports = function (db, transporter) {
         GROUP BY u.id, u.fullName, u.email
         HAVING unconfirmedItems > 0
       `);
-      // Process the result to make symposiums cleaner if needed (it comes as comma separated string)
-      // For now, sending as string is fine, frontend can filter with 'includes'
       res.status(200).json(users);
     } catch (error) {
       console.error('Failed to fetch unconfirmed users:', error);
@@ -56,14 +54,12 @@ module.exports = function (db, transporter) {
         await connection.beginTransaction();
 
         try {
-          // 1. Fetch user's email
           const [[user]] = await connection.execute('SELECT email, fullName as name FROM users WHERE id = ?', [userId]);
           if (!user) {
             await connection.rollback();
             continue;
           }
 
-          // 2. Fetch user's registered items that need confirmation, filtered by symposium if needed
           let query = `
             SELECT DISTINCT COALESCE(ee.eventName, cbe.eventName, p.name) as itemName
              FROM verified_registrations vr
@@ -76,25 +72,23 @@ module.exports = function (db, transporter) {
           const queryParams = [userId];
 
           if (symposium === 'Enigma') {
-            query += ` AND (ee.id IS NOT NULL OR (p.id IS NOT NULL AND p.name LIKE '%Tech%'))`;
+            query += " AND (ee.id IS NOT NULL OR (p.id IS NOT NULL AND p.name LIKE '%Tech%'))";
           } else if (symposium === 'Carteblanche') {
-            query += ` AND (cbe.id IS NOT NULL OR (p.id IS NOT NULL AND p.name NOT LIKE '%Tech%' AND p.name != 'Pass Unlocked'))`;
+            query += " AND (cbe.id IS NOT NULL OR (p.id IS NOT NULL AND p.name NOT LIKE '%Tech%' AND p.name != 'Pass Unlocked'))";
           }
 
           const [items] = await connection.execute(query, queryParams);
 
           if (items.length === 0) {
-
             await connection.rollback();
             continue;
           }
 
-          const eventList = items.map(item => `< li > ${item.itemName}</li > `).join('');
+          const eventList = items.map(item => `<li>${item.itemName}</li>`).join('');
 
-          // 3. Construct email body
           const htmlBody = `
-        < p > Hello ${user.name},</p >
-            <p>${emailContent.replace(/\n/g, '<br>')}</p>
+            <p>Hello ${user.name},</p>
+            <p>${emailContent.replace(/\\n/g, '<br>')}</p>
             <br>
             <p>Your registration for the following items has been confirmed:</p>
             <ul>
@@ -105,7 +99,6 @@ module.exports = function (db, transporter) {
             <p>CSMIT Team</p>
           `;
 
-          // 4. Send the email
           await transporter.sendMail({
             from: `"CSMIT Team" <${process.env.EMAIL_USER}>`,
             to: user.email,
@@ -113,7 +106,6 @@ module.exports = function (db, transporter) {
             html: htmlBody,
           });
 
-          // 5. Update confirmation status
           await connection.execute(
             'UPDATE verified_registrations SET confirmation_email_sent = true WHERE userId = ? AND verified = true',
             [userId]
@@ -146,14 +138,12 @@ module.exports = function (db, transporter) {
     }
 
     try {
-      // 1. Fetch user's email
-      const [users] = await db.execute('SELECT email, name FROM users WHERE id = ?', [userId]);
+      const [users] = await db.execute('SELECT email, fullName as name FROM users WHERE id = ?', [userId]);
       if (users.length === 0) {
         return res.status(404).json({ message: 'User not found.' });
       }
       const user = users[0];
 
-      // 2. Fetch user's registered items (verified only)
       const [items] = await db.execute(
         `SELECT DISTINCT COALESCE(ee.eventName, cbe.eventName, p.name) as itemName
          FROM verified_registrations vr
@@ -166,10 +156,9 @@ module.exports = function (db, transporter) {
 
       const eventList = items.map(item => `<li>${item.itemName}</li>`).join('');
 
-      // 3. Construct email body
       const htmlBody = `
         <p>Hello ${user.name},</p>
-        <p>${emailContent.replace(/\n/g, '<br>')}</p>
+        <p>${emailContent.replace(/\\n/g, '<br>')}</p>
         <br>
         <p>Here are the events you are registered for:</p>
         <ul>
@@ -180,7 +169,6 @@ module.exports = function (db, transporter) {
         <p>CSMIT Team</p>
       `;
 
-      // 4. Send the email
       await transporter.sendMail({
         from: `"CSMIT Team" <${process.env.EMAIL_USER}>`,
         to: user.email,

@@ -116,7 +116,6 @@ module.exports = function (db) {
 
 
       if (!bookings) {
-        console.warn('Bookings is null/undefined!');
         return res.json([]);
       }
 

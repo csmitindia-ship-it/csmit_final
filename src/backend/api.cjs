@@ -6,7 +6,6 @@ const app = express();
 
 // --- Middleware for logging ---
 app.use((req, res, next) => {
-    console.log(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl}`);
     next();
 });
 
@@ -44,5 +43,4 @@ app.get('/api/users', async (req, res) => {
 // --- Start Server ---
 const PORT = 8080;
 app.listen(PORT, () => {
-    console.log(`App running on http://localhost:${PORT}/api/test`);
 });

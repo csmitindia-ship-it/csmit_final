@@ -191,11 +191,14 @@ module.exports = function (db, uploadTransactionScreenshot) {
             continue;
           }
 
+          const symposium = pass.name.toLowerCase().includes('tech') ? 'Enigma' : 'Carteblanche';
+
           await connection.execute(
             `INSERT INTO registrations 
-                 (passId, userName, userEmail, mobileNumber, transactionId, transactionUsername, transactionTime, transactionDate, transactionAmount, transactionScreenshot) 
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                 (symposium, passId, userName, userEmail, mobileNumber, transactionId, transactionUsername, transactionTime, transactionDate, transactionAmount, transactionScreenshot) 
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
+              symposium,
               passId,
               user.fullName,
               user.email,
@@ -211,7 +214,6 @@ module.exports = function (db, uploadTransactionScreenshot) {
         }
 
         // --- Process Accommodation Booking ---
-        ('Checking for accommodation info...', accommodationInfo);
         if (accommodationInfo) {
           ('Accommodation info found, processing booking...');
           const { gender, accommodationDetails } = accommodationInfo;
@@ -222,16 +224,13 @@ module.exports = function (db, uploadTransactionScreenshot) {
             [gender]
           );
 
-          ('Fetched accommodation details from DB:', accommodation);
 
           if (!accommodation || accommodation.available_rooms < quantity) {
             console.error(`Not enough rooms available for ${gender}. Available: ${accommodation ? accommodation.available_rooms : 0}, Required: ${quantity}`);
             throw new Error(`Not enough rooms available for ${gender}.`);
           }
           const accommodationFee = accommodation.fees * quantity;
-          (`Calculated accommodation fee: ${accommodationFee}`);
 
-          ('Inserting into registrations table for accommodation...');
           await connection.execute(
             `INSERT INTO registrations 
              (symposium, userName, userEmail, mobileNumber, transactionId, transactionUsername, transactionTime, transactionDate, transactionAmount, transactionScreenshot) 
@@ -249,7 +248,6 @@ module.exports = function (db, uploadTransactionScreenshot) {
               transactionScreenshot,
             ]
           );
-          ('Successfully inserted into registrations table.');
 
           const [existingBooking] = await connection.execute(
             'SELECT id FROM accommodation_bookings WHERE userId = ?',
@@ -257,27 +255,23 @@ module.exports = function (db, uploadTransactionScreenshot) {
           );
 
           if (existingBooking.length === 0) {
-            ('No existing accommodation booking found, creating a new one...');
 
             // FIX: Removed 'isVerified' from the INSERT columns and values
             await connection.execute(
               'INSERT INTO accommodation_bookings (userId, gender, status, transactionId, quantity) VALUES (?, ?, ?, ?, ?)',
               [userId, gender, 'pending', transactionId, quantity]
             );
-            ('Successfully inserted into accommodation_bookings table.');
 
             const [updateResult] = await connection.execute(
               'UPDATE accommodation SET available_rooms = available_rooms - ? WHERE gender = ?',
               [quantity, gender]
             );
-            ('Updated available rooms count.');
 
             if (updateResult.affectedRows === 0) {
               console.error(`Failed to update accommodation room count for ${gender}.`);
               throw new Error(`Failed to update accommodation room count for ${gender}.`);
             }
           } else {
-            ('User already has an accommodation booking, skipping creation of new one.');
           }
         }
 
@@ -303,25 +297,38 @@ module.exports = function (db, uploadTransactionScreenshot) {
 
   router.get('/registered-users', async (req, res) => {
     try {
-      const [users] = await db.execute(`
+      let query = `
         SELECT 
-          DISTINCT u.id,
-          u.fullName,
-          u.email,
-          u.mobile,
-          u.college,
-          u.department,
-          u.yearOfPassing,
-          u.state,
+          u.id, 
+          u.fullName, 
+          u.email, 
+          u.mobile, 
+          u.college, 
+          u.department, 
+          u.yearOfPassing, 
+          u.state, 
           u.district,
-          COUNT(r.eventId) AS totalEvents
+          COUNT(r.id) AS totalEvents,
+          COALESCE(CAST(GROUP_CONCAT(DISTINCT r.symposium SEPARATOR ', ') AS CHAR), 'N/A') AS symposiums
         FROM users u
-        JOIN registrations r ON u.email = r.userEmail
+        INNER JOIN registrations r ON u.email = r.userEmail
+      `;
+
+      const queryParams = [];
+      const { symposium } = req.query;
+
+      if (symposium && symposium !== 'All') {
+        query += ` WHERE r.symposium = ? `;
+        queryParams.push(symposium);
+      }
+
+      query += `
         GROUP BY u.id, u.fullName, u.email, u.mobile, u.college, 
                  u.department, u.yearOfPassing, u.state, u.district
         ORDER BY totalEvents DESC;
-      `);
+      `;
 
+      const [users] = await db.execute(query, queryParams);
       res.status(200).json(users);
     } catch (error) {
       console.error('Error fetching active users:', error);
@@ -635,9 +642,11 @@ module.exports = function (db, uploadTransactionScreenshot) {
             continue;
           }
 
+          const symposium = pass.name.toLowerCase().includes('tech') ? 'Enigma' : 'Carteblanche';
+
           await connection.execute(
-            `INSERT INTO registrations (passId, userName, userEmail, mobileNumber, transactionId, transactionAmount) VALUES (?, ?, ?, ?, ?, ?)`,
-            [passId, user.fullName, user.email, user.mobile || null, 'ADMIN_REG', 0]
+            `INSERT INTO registrations (symposium, passId, userName, userEmail, mobileNumber, transactionId, transactionAmount) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+            [symposium, passId, user.fullName, user.email, user.mobile || null, 'ADMIN_REG', 0]
           );
 
           await connection.execute(

@@ -71,6 +71,8 @@ const UpdateWinnersPage: React.FC = () => {
   const [ineligibleMessage, setIneligibleMessage] = useState('');
   const [modalMessage, setModalMessage] = useState<string | null>(null);
 
+  const [filterSymposium, setFilterSymposium] = useState<'All' | 'Enigma' | 'Carteblanche'>('All');
+
   useEffect(() => {
     const fetchEvents = async () => {
       try {
@@ -165,6 +167,11 @@ const UpdateWinnersPage: React.FC = () => {
       reg.email.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const filteredEvents = events.filter(event => {
+    if (filterSymposium === 'All') return true;
+    return event.symposiumName === filterSymposium;
+  });
+
   return (
     <div className="text-white">
       <ThemedModal
@@ -176,12 +183,48 @@ const UpdateWinnersPage: React.FC = () => {
       </ThemedModal>
 
       <h1 className="text-2xl font-bold mb-6">Update Winners</h1>
+
+      {/* Symposium Filter */}
+      <div className="mb-6 bg-gray-800 p-4 rounded-lg inline-block">
+        <label className="mr-4 font-semibold">Filter Events:</label>
+        <label className="inline-flex items-center mr-4 cursor-pointer">
+          <input
+            type="radio"
+            value="All"
+            checked={filterSymposium === 'All'}
+            onChange={(e) => setFilterSymposium(e.target.value as any)}
+            className="form-radio text-blue-600"
+          />
+          <span className="ml-2">All</span>
+        </label>
+        <label className="inline-flex items-center mr-4 cursor-pointer">
+          <input
+            type="radio"
+            value="Enigma"
+            checked={filterSymposium === 'Enigma'}
+            onChange={(e) => setFilterSymposium(e.target.value as any)}
+            className="form-radio text-purple-600"
+          />
+          <span className="ml-2">Enigma</span>
+        </label>
+        <label className="inline-flex items-center cursor-pointer">
+          <input
+            type="radio"
+            value="Carteblanche"
+            checked={filterSymposium === 'Carteblanche'}
+            onChange={(e) => setFilterSymposium(e.target.value as any)}
+            className="form-radio text-pink-600"
+          />
+          <span className="ml-2">Carteblanche</span>
+        </label>
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Events List */}
         <div>
           <h2 className="text-xl font-semibold mb-4">Events</h2>
           <div className="space-y-4">
-            {events.map((event) => (
+            {filteredEvents.map((event) => (
               <div key={event.id} className="bg-gray-800 p-4 rounded-lg">
                 <h3 className="font-bold text-lg">
                   {event.eventName} ({event.symposiumName})
@@ -191,12 +234,11 @@ const UpdateWinnersPage: React.FC = () => {
                     <button
                       key={round.roundNumber}
                       onClick={() => handleRoundClick(event.id, round.roundNumber)}
-                      className={`w-full text-left p-2 rounded-md ${
-                        selectedRound?.eventId === event.id &&
+                      className={`w-full text-left p-2 rounded-md ${selectedRound?.eventId === event.id &&
                         selectedRound?.roundNumber === round.roundNumber
-                          ? 'bg-purple-600'
-                          : 'bg-gray-700 hover:bg-gray-600'
-                      }`}
+                        ? 'bg-purple-600'
+                        : 'bg-gray-700 hover:bg-gray-600'
+                        }`}
                     >
                       Round {round.roundNumber}: {round.roundDetails}
                     </button>
@@ -234,10 +276,10 @@ const UpdateWinnersPage: React.FC = () => {
 
                 const roundStatus =
                   reg[
-                    `round${selectedRound.roundNumber}` as
-                      | 'round1'
-                      | 'round2'
-                      | 'round3'
+                  `round${selectedRound.roundNumber}` as
+                  | 'round1'
+                  | 'round2'
+                  | 'round3'
                   ];
 
                 return (

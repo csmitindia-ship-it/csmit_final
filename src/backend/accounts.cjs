@@ -5,9 +5,6 @@ module.exports = (db, uploadPdf) => {
 
   // Add new account details
   router.post('/', uploadPdf.single('qrCodePdf'), async (req, res) => {
-    console.log('POST /accounts - Attempting to add new account...');
-    console.log('Request Body:', req.body);
-    console.log('File Received:', req.file ? req.file.originalname : 'No file uploaded');
 
     const { accountName, bankName, accountNumber, ifscCode } = req.body;
     const qrCodePdf = req.file ? req.file.buffer : null;
@@ -21,7 +18,6 @@ module.exports = (db, uploadPdf) => {
         'INSERT INTO accounts (accountName, bankName, accountNumber, ifscCode, qrCodePdf) VALUES (?, ?, ?, ?, ?)',
         [accountName, bankName, accountNumber, ifscCode, qrCodePdf]
       );
-      console.log(`Account added successfully. New accountId: ${result.insertId}`);
       res.status(201).json({ message: 'Account details added successfully', accountId: result.insertId });
     } catch (error) {
       // This is the most important log for debugging
@@ -45,7 +41,6 @@ module.exports = (db, uploadPdf) => {
   // Get account details for a specific event
   router.get('/event/:eventId', async (req, res) => {
     const { eventId } = req.params;
-    console.log(`GET /accounts/event/${eventId} - Fetching account for event...`);
 
     try {
       // First, find the accountId linked to the eventId
@@ -57,7 +52,6 @@ module.exports = (db, uploadPdf) => {
       }
 
       const accountId = eventAccount[0].accountId;
-      console.log(`Found mapping: eventId ${eventId} -> accountId ${accountId}. Fetching details...`);
 
       // Now, fetch the account details using the found accountId
       const [account] = await db.execute('SELECT id, accountName, bankName, accountNumber, ifscCode, qrCodePdf FROM accounts WHERE id = ?', [accountId]);
@@ -67,7 +61,6 @@ module.exports = (db, uploadPdf) => {
         return res.status(404).json({ message: 'Account details not found.' });
       }
 
-      console.log(`Successfully fetched account details for eventId: ${eventId}`);
       res.status(200).json(account[0]);
     } catch (error) {
       console.error(`Error fetching account for event ${eventId}:`, error);
@@ -129,9 +122,6 @@ module.exports = (db, uploadPdf) => {
   // Update account details
   router.put('/:id', uploadPdf.single('qrCodePdf'), async (req, res) => {
     const { id } = req.params;
-    console.log(`PUT /accounts/${id} - Attempting to update account...`);
-    console.log('Request Body:', req.body);
-    console.log('File Received:', req.file ? req.file.originalname : 'No new file uploaded');
 
     const { accountName, bankName, accountNumber, ifscCode } = req.body;
     const qrCodePdf = req.file ? req.file.buffer : null;
@@ -146,7 +136,6 @@ module.exports = (db, uploadPdf) => {
 
       // Only add the PDF to the update query if a new one was uploaded
       if (qrCodePdf) {
-        console.log(`Updating qrCodePdf for account ${id}.`);
         sql += ', qrCodePdf = ?';
         params.push(qrCodePdf);
       }
@@ -161,7 +150,6 @@ module.exports = (db, uploadPdf) => {
         return res.status(404).json({ message: 'Account not found' });
       }
 
-      console.log(`Account ${id} updated successfully.`);
       res.status(200).json({ message: 'Account details updated successfully' });
     } catch (error) {
       console.error(`Error updating account ${id}:`, error);
@@ -172,7 +160,6 @@ module.exports = (db, uploadPdf) => {
   // Delete account details
   router.delete('/:id', async (req, res) => {
     const { id } = req.params;
-    console.log(`DELETE /accounts/${id} - Attempting to delete account...`);
 
     try {
       const [result] = await db.execute('DELETE FROM accounts WHERE id = ?', [id]);
@@ -182,7 +169,6 @@ module.exports = (db, uploadPdf) => {
         return res.status(404).json({ message: 'Account not found' });
       }
 
-      console.log(`Account ${id} deleted successfully.`);
       res.status(200).json({ message: 'Account details deleted successfully' });
     } catch (error) {
       console.error(`Error deleting account ${id}:`, error);
