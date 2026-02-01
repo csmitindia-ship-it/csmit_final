@@ -106,7 +106,6 @@ module.exports = function (db) {
 
   // Get all accommodation bookings (for admin)
   router.get('/bookings/all', async (req, res) => {
-    console.log('GET /accommodation/bookings/all - Fetching all bookings...');
     try {
       const [bookings] = await db.execute(
         `SELECT ab.*, u.fullName, u.email, u.mobile 
@@ -114,7 +113,7 @@ module.exports = function (db) {
          JOIN users u ON ab.userId = u.id 
          ORDER BY ab.createdAt DESC`
       );
-      console.log(`Fetched ${bookings ? bookings.length : 'null'} bookings.`);
+
 
       if (!bookings) {
         console.warn('Bookings is null/undefined!');

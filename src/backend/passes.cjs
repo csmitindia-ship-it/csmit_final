@@ -1,13 +1,13 @@
 const express = require('express');
 
-console.log('--- passes.cjs module loaded ---');
+
 
 module.exports = function (db) {
     const router = express.Router();
 
     // Get all passes
     router.get('/', async (req, res) => {
-        console.log('GET /admin/passes reached');
+
         try {
             const [passes] = await db.execute('SELECT * FROM passes');
             res.json(passes);
@@ -19,7 +19,7 @@ module.exports = function (db) {
 
     // Create a new pass
     router.post('/', async (req, res) => {
-        console.log(req.body);
+
         const { name, cost, pass_limit, description, accountId, discountPercentage, discountReason } = req.body;
         if (!name || !cost || !pass_limit || !accountId) {
             return res.status(400).json({ message: 'All fields are required' });

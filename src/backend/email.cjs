@@ -46,7 +46,7 @@ module.exports = function (db, transporter) {
           // 1. Fetch user's email
           const [[user]] = await connection.execute('SELECT email, fullName as name FROM users WHERE id = ?', [userId]);
           if (!user) {
-            console.warn(`User with ID ${userId} not found. Skipping.`);
+
             await connection.rollback();
             continue;
           }
@@ -63,7 +63,7 @@ module.exports = function (db, transporter) {
           );
 
           if (items.length === 0) {
-            console.warn(`No unconfirmed items for user ${userId}. Skipping.`);
+
             await connection.rollback();
             continue;
           }

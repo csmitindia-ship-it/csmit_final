@@ -184,7 +184,7 @@ const App: React.FC = () => {
       const data = await response.json();
       setAccounts(data.length ? data : []);
     } catch (err) {
-      console.error(err);
+
     }
   };
 
@@ -195,7 +195,7 @@ const App: React.FC = () => {
       const data = await response.json();
       setPasses(data);
     } catch (err) {
-      console.error(err);
+
     }
   };
 
@@ -213,7 +213,7 @@ const App: React.FC = () => {
             const assignedAccounts = await accResp.json();
             return { ...event, assignedAccounts: assignedAccounts || [] };
           } catch (innerError) {
-            console.error('Error fetching assigned accounts for event', event.id, innerError);
+            // console.error('Error fetching assigned accounts for event', event.id, innerError);
             return { ...event, assignedAccounts: [] };
           }
         })
@@ -221,7 +221,7 @@ const App: React.FC = () => {
 
       setEvents(eventsData);
     } catch (err) {
-      console.error(err);
+
       setModalTitle('Error');
       setModalMessage('Failed to load events. Check backend.');
       setShowConfirmButton(false);
@@ -238,7 +238,7 @@ const App: React.FC = () => {
       const data = await response.json();
       setOrganizers(data);
     } catch (err) {
-      console.error(err);
+
     }
   };
 
@@ -290,7 +290,7 @@ const App: React.FC = () => {
       setIsDiscountModalOpen(false);
       fetchEvents(); // Refresh data to see changes
     } catch (err) {
-      console.error(err);
+
       setModalTitle('Error');
       setModalMessage(err instanceof Error ? err.message : 'Failed to apply discount.');
       setShowConfirmButton(false);
@@ -378,7 +378,7 @@ const App: React.FC = () => {
         setEditingEvent(null);
       }
     } catch (err) {
-      console.error(err);
+
       setModalTitle('Error');
       setModalMessage('Failed to save event.');
       setShowConfirmButton(false);
@@ -404,7 +404,7 @@ const App: React.FC = () => {
         setModalMessage('Event deleted successfully');
         setShowConfirmButton(false);
       } catch (err) {
-        console.error(err);
+
         setModalTitle('Error');
         setModalMessage('Failed to delete event');
         setShowConfirmButton(false);
@@ -429,7 +429,7 @@ const App: React.FC = () => {
       setShowConfirmButton(false);
       setIsModalOpen(true);
     } catch (err) {
-      console.error(err);
+
       setModalTitle('Error');
       setModalMessage('Failed to assign account');
       setShowConfirmButton(false);
@@ -457,7 +457,7 @@ const App: React.FC = () => {
       setShowConfirmButton(false);
       setIsModalOpen(true);
     } catch (err) {
-      console.error('Error removing account:', err);
+
       setModalTitle('Error');
       setModalMessage(`Failed to remove account: ${err}`);
       setShowConfirmButton(false);

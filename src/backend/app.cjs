@@ -76,7 +76,7 @@ async function createTablesIfNotExists() {
       `, [tableName, columnName]);
 
       if (columns.length === 0) {
-        console.log(`Adding missing column '${columnName}' to '${tableName}'...`);
+
         await db.execute(`ALTER TABLE ${tableName} ADD COLUMN ${columnName} ${columnDef}`);
       }
     }
@@ -136,7 +136,7 @@ async function createTablesIfNotExists() {
     `);
 
     if (discountCol.length === 0) {
-      console.log('Adding discount columns to passes table...');
+
       await db.execute(`
         ALTER TABLE passes
         ADD COLUMN discountPercentage INT DEFAULT 0,
@@ -462,16 +462,12 @@ async function createTablesIfNotExists() {
       )
     `);
 
-    console.log('✅ All tables created successfully');
-
   } catch (err) {
-    console.error('❌ Table creation failed:', err);
     process.exit(1);
   }
 }
 
 async function connectToDatabase() {
-  console.log('Connecting to database...');
   await createTablesIfNotExists();
 }
 

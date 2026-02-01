@@ -30,7 +30,7 @@ export default function LoginPage({ isOpen, onClose, onSwitchToSignUp, onSwitchT
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (email === 'csmitindia@gmail.com' && password === 'Csmit@2025') {
+    if (email === 'csmitindia@gmail.com' && password === '2026@Csmit') {
       login(null, email, 'admin');
       navigate('/admin/manage-events');
       onClose();
@@ -68,9 +68,8 @@ export default function LoginPage({ isOpen, onClose, onSwitchToSignUp, onSwitchT
   // Fixed: Always return the modal div, hide it when not open
   return (
     <div
-      className={`fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 transition-opacity duration-300 ${
-        isOpen ? 'opacity-100 visible' : 'opacity-0 invisible'
-      }`}
+      className={`fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 transition-opacity duration-300 ${isOpen ? 'opacity-100 visible' : 'opacity-0 invisible'
+        }`}
       onClick={onClose}
     >
       <div

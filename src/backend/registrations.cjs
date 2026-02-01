@@ -211,9 +211,9 @@ module.exports = function (db, uploadTransactionScreenshot) {
         }
 
         // --- Process Accommodation Booking ---
-        console.log('Checking for accommodation info...', accommodationInfo);
+        ('Checking for accommodation info...', accommodationInfo);
         if (accommodationInfo) {
-          console.log('Accommodation info found, processing booking...');
+          ('Accommodation info found, processing booking...');
           const { gender, accommodationDetails } = accommodationInfo;
           const quantity = accommodationDetails.quantity;
 
@@ -222,16 +222,16 @@ module.exports = function (db, uploadTransactionScreenshot) {
             [gender]
           );
 
-          console.log('Fetched accommodation details from DB:', accommodation);
+          ('Fetched accommodation details from DB:', accommodation);
 
           if (!accommodation || accommodation.available_rooms < quantity) {
             console.error(`Not enough rooms available for ${gender}. Available: ${accommodation ? accommodation.available_rooms : 0}, Required: ${quantity}`);
             throw new Error(`Not enough rooms available for ${gender}.`);
           }
           const accommodationFee = accommodation.fees * quantity;
-          console.log(`Calculated accommodation fee: ${accommodationFee}`);
+          (`Calculated accommodation fee: ${accommodationFee}`);
 
-          console.log('Inserting into registrations table for accommodation...');
+          ('Inserting into registrations table for accommodation...');
           await connection.execute(
             `INSERT INTO registrations 
              (symposium, userName, userEmail, mobileNumber, transactionId, transactionUsername, transactionTime, transactionDate, transactionAmount, transactionScreenshot) 
@@ -249,7 +249,7 @@ module.exports = function (db, uploadTransactionScreenshot) {
               transactionScreenshot,
             ]
           );
-          console.log('Successfully inserted into registrations table.');
+          ('Successfully inserted into registrations table.');
 
           const [existingBooking] = await connection.execute(
             'SELECT id FROM accommodation_bookings WHERE userId = ?',
@@ -257,27 +257,27 @@ module.exports = function (db, uploadTransactionScreenshot) {
           );
 
           if (existingBooking.length === 0) {
-            console.log('No existing accommodation booking found, creating a new one...');
+            ('No existing accommodation booking found, creating a new one...');
 
             // FIX: Removed 'isVerified' from the INSERT columns and values
             await connection.execute(
               'INSERT INTO accommodation_bookings (userId, gender, status, transactionId, quantity) VALUES (?, ?, ?, ?, ?)',
               [userId, gender, 'pending', transactionId, quantity]
             );
-            console.log('Successfully inserted into accommodation_bookings table.');
+            ('Successfully inserted into accommodation_bookings table.');
 
             const [updateResult] = await connection.execute(
               'UPDATE accommodation SET available_rooms = available_rooms - ? WHERE gender = ?',
               [quantity, gender]
             );
-            console.log('Updated available rooms count.');
+            ('Updated available rooms count.');
 
             if (updateResult.affectedRows === 0) {
               console.error(`Failed to update accommodation room count for ${gender}.`);
               throw new Error(`Failed to update accommodation room count for ${gender}.`);
             }
           } else {
-            console.log('User already has an accommodation booking, skipping creation of new one.');
+            ('User already has an accommodation booking, skipping creation of new one.');
           }
         }
 

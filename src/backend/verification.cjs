@@ -35,7 +35,6 @@ module.exports = function (db) {
 
       res.status(200).json({ message: 'Verification status updated successfully.' });
     } catch (error) {
-      console.error('Error updating verification status:', error);
       res.status(500).json({ message: 'An error occurred while updating verification status.' });
     }
   });
@@ -153,7 +152,6 @@ module.exports = function (db) {
 
     } catch (error) {
       if (connection) await connection.rollback();
-      console.error('Verification failed:', error);
       res.status(500).json({ message: 'An error occurred during verification.' });
     } finally {
       if (connection) connection.release();
