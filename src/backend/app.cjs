@@ -72,7 +72,7 @@ async function createTablesIfNotExists() {
     async function addColumnIfNotExists(tableName, columnName, columnDef) {
       const [columns] = await db.execute(`
         SELECT * FROM INFORMATION_SCHEMA.COLUMNS
-        WHERE TABLE_SCHEMA = 'csmit_db' AND TABLE_NAME = ? AND COLUMN_NAME = ?
+        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?
       `, [tableName, columnName]);
 
       if (columns.length === 0) {
@@ -118,7 +118,7 @@ async function createTablesIfNotExists() {
     // Check if accountId column exists and add it if not
     const [columns] = await db.execute(`
       SELECT * FROM INFORMATION_SCHEMA.COLUMNS
-      WHERE TABLE_SCHEMA = 'csmit_db' AND TABLE_NAME = 'passes' AND COLUMN_NAME = 'accountId'
+      WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'passes' AND COLUMN_NAME = 'accountId'
     `);
 
     if (columns.length === 0) {
@@ -132,7 +132,7 @@ async function createTablesIfNotExists() {
     // Check if discountPercentage column exists and add it if not
     const [discountCol] = await db.execute(`
       SELECT * FROM INFORMATION_SCHEMA.COLUMNS
-      WHERE TABLE_SCHEMA = 'csmit_db' AND TABLE_NAME = 'passes' AND COLUMN_NAME = 'discountPercentage'
+      WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'passes' AND COLUMN_NAME = 'discountPercentage'
     `);
 
     if (discountCol.length === 0) {
@@ -222,6 +222,16 @@ async function createTablesIfNotExists() {
       );
     `);
 
+    // Add discount columns to enigma_events if not exists
+    await addColumnIfNotExists('enigma_events', 'discountPercentage', 'INT DEFAULT 0');
+    await addColumnIfNotExists('enigma_events', 'discountReason', 'VARCHAR(255) NULL');
+    await addColumnIfNotExists('enigma_events', 'mit_discount_percentage', 'INT DEFAULT 0');
+
+    // Add discount columns to carte_blanche_events if not exists
+    await addColumnIfNotExists('carte_blanche_events', 'discountPercentage', 'INT DEFAULT 0');
+    await addColumnIfNotExists('carte_blanche_events', 'discountReason', 'VARCHAR(255) NULL');
+    await addColumnIfNotExists('carte_blanche_events', 'mit_discount_percentage', 'INT DEFAULT 0');
+
     await db.execute(`
       CREATE TABLE IF NOT EXISTS enigma_rounds (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -297,7 +307,7 @@ async function createTablesIfNotExists() {
     // Check and alter existing table for backward compatibility
     const [registrationsColumns] = await db.execute(`
       SELECT COLUMN_NAME, IS_NULLABLE FROM INFORMATION_SCHEMA.COLUMNS
-      WHERE TABLE_SCHEMA = 'csmit_db' AND TABLE_NAME = 'registrations'
+      WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'registrations'
     `);
 
     const hasPassId = registrationsColumns.some(c => c.COLUMN_NAME === 'passId');
@@ -363,7 +373,7 @@ async function createTablesIfNotExists() {
     // Check and alter existing verified_registrations table for backward compatibility
     const [verifiedRegistrationsColumns] = await db.execute(`
         SELECT COLUMN_NAME, IS_NULLABLE FROM INFORMATION_SCHEMA.COLUMNS
-        WHERE TABLE_SCHEMA = 'csmit_db' AND TABLE_NAME = 'verified_registrations'
+        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'verified_registrations'
     `);
 
     const hasVerifiedPassId = verifiedRegistrationsColumns.some(c => c.COLUMN_NAME === 'passId');
@@ -423,7 +433,7 @@ async function createTablesIfNotExists() {
 
     const [bookingColumns] = await db.execute(`
       SELECT * FROM INFORMATION_SCHEMA.COLUMNS
-      WHERE TABLE_SCHEMA = 'csmit_db' AND TABLE_NAME = 'accommodation_bookings' AND COLUMN_NAME = 'quantity'
+      WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'accommodation_bookings' AND COLUMN_NAME = 'quantity'
     `);
     if (bookingColumns.length === 0) {
       await db.execute(`ALTER TABLE accommodation_bookings ADD COLUMN quantity INT NOT NULL DEFAULT 1`);
@@ -447,7 +457,7 @@ async function createTablesIfNotExists() {
 
     const [cartColumns] = await db.execute(`
       SELECT * FROM INFORMATION_SCHEMA.COLUMNS
-      WHERE TABLE_SCHEMA = 'csmit_db' AND TABLE_NAME = 'accommodation_cart' AND COLUMN_NAME = 'quantity'
+      WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'accommodation_cart' AND COLUMN_NAME = 'quantity'
     `);
     if (cartColumns.length === 0) {
       await db.execute(`ALTER TABLE accommodation_cart ADD COLUMN quantity INT NOT NULL DEFAULT 1`);

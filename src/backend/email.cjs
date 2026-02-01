@@ -8,17 +8,30 @@ module.exports = function (db, transporter) {
   router.get('/unconfirmed-users', async (req, res) => {
     try {
       const [users] = await db.execute(`
-        SELECT 
-          u.id, 
-          u.fullName, 
-          u.email, 
-          COUNT(vr.id) as unconfirmedItems
+        SELECT
+          u.id,
+          u.fullName,
+          u.email,
+          COUNT(vr.id) as unconfirmedItems,
+          GROUP_CONCAT(DISTINCT
+            CASE
+              WHEN ee.id IS NOT NULL THEN 'Enigma'
+              WHEN cbe.id IS NOT NULL THEN 'Carteblanche'
+              WHEN p.id IS NOT NULL AND p.name LIKE '%Tech%' THEN 'Enigma'
+              ELSE 'Carteblanche'
+            END
+          ) as symposiums
         FROM users u
         JOIN verified_registrations vr ON u.id = vr.userId
+        LEFT JOIN enigma_events ee ON vr.eventId = ee.id
+        LEFT JOIN carte_blanche_events cbe ON vr.eventId = cbe.id
+        LEFT JOIN passes p ON vr.passId = p.id
         WHERE vr.verified = true AND vr.confirmation_email_sent = false
         GROUP BY u.id, u.fullName, u.email
         HAVING unconfirmedItems > 0
       `);
+      // Process the result to make symposiums cleaner if needed (it comes as comma separated string)
+      // For now, sending as string is fine, frontend can filter with 'includes'
       res.status(200).json(users);
     } catch (error) {
       console.error('Failed to fetch unconfirmed users:', error);
@@ -28,7 +41,7 @@ module.exports = function (db, transporter) {
 
   // Send confirmation emails in bulk
   router.post('/bulk-send-confirmation', async (req, res) => {
-    const { userIds, subject, emailContent } = req.body;
+    const { userIds, subject, emailContent, symposium } = req.body;
 
     if (!Array.isArray(userIds) || userIds.length === 0 || !subject) {
       return res.status(400).json({ message: 'User IDs array and subject are required.' });
@@ -46,21 +59,29 @@ module.exports = function (db, transporter) {
           // 1. Fetch user's email
           const [[user]] = await connection.execute('SELECT email, fullName as name FROM users WHERE id = ?', [userId]);
           if (!user) {
-
             await connection.rollback();
             continue;
           }
 
-          // 2. Fetch user's registered items that need confirmation
-          const [items] = await connection.execute(
-            `SELECT DISTINCT COALESCE(ee.eventName, cbe.eventName, p.name) as itemName
+          // 2. Fetch user's registered items that need confirmation, filtered by symposium if needed
+          let query = `
+            SELECT DISTINCT COALESCE(ee.eventName, cbe.eventName, p.name) as itemName
              FROM verified_registrations vr
              LEFT JOIN enigma_events ee ON vr.eventId = ee.id
              LEFT JOIN carte_blanche_events cbe ON vr.eventId = cbe.id
              LEFT JOIN passes p ON vr.passId = p.id
-             WHERE vr.userId = ? AND vr.verified = true AND vr.confirmation_email_sent = false`,
-            [userId]
-          );
+             WHERE vr.userId = ? AND vr.verified = true AND vr.confirmation_email_sent = false
+          `;
+
+          const queryParams = [userId];
+
+          if (symposium === 'Enigma') {
+            query += ` AND (ee.id IS NOT NULL OR (p.id IS NOT NULL AND p.name LIKE '%Tech%'))`;
+          } else if (symposium === 'Carteblanche') {
+            query += ` AND (cbe.id IS NOT NULL OR (p.id IS NOT NULL AND p.name NOT LIKE '%Tech%' AND p.name != 'Pass Unlocked'))`;
+          }
+
+          const [items] = await connection.execute(query, queryParams);
 
           if (items.length === 0) {
 
@@ -68,11 +89,11 @@ module.exports = function (db, transporter) {
             continue;
           }
 
-          const eventList = items.map(item => `<li>${item.itemName}</li>`).join('');
+          const eventList = items.map(item => `< li > ${item.itemName}</li > `).join('');
 
           // 3. Construct email body
           const htmlBody = `
-            <p>Hello ${user.name},</p>
+        < p > Hello ${user.name},</p >
             <p>${emailContent.replace(/\n/g, '<br>')}</p>
             <br>
             <p>Your registration for the following items has been confirmed:</p>

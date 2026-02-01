@@ -7,11 +7,13 @@ interface UnconfirmedUser {
   fullName: string;
   email: string;
   unconfirmedItems: number;
+  symposiums?: string;
 }
 
 const BulkSendConfirmationEmailPage: React.FC = () => {
   const [users, setUsers] = useState<UnconfirmedUser[]>([]);
   const [selectedUsers, setSelectedUsers] = useState<number[]>([]);
+  const [filterSymposium, setFilterSymposium] = useState<'All' | 'Enigma' | 'Carteblanche'>('All');
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [subject, setSubject] = useState('Event Registration Confirmation');
@@ -37,9 +39,14 @@ const BulkSendConfirmationEmailPage: React.FC = () => {
     }
   };
 
+  const filteredUsers = users.filter(user => {
+    if (filterSymposium === 'All') return true;
+    return user.symposiums?.includes(filterSymposium);
+  });
+
   const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.checked) {
-      setSelectedUsers(users.map(u => u.id));
+      setSelectedUsers(filteredUsers.map(u => u.id));
     } else {
       setSelectedUsers([]);
     }
@@ -68,6 +75,7 @@ const BulkSendConfirmationEmailPage: React.FC = () => {
           userIds: selectedUsers,
           subject,
           emailContent,
+          symposium: filterSymposium,
         }),
       });
 
@@ -91,6 +99,41 @@ const BulkSendConfirmationEmailPage: React.FC = () => {
     <div>
       <div className="p-4 max-w-4xl mx-auto">
         <h1 className="text-2xl font-bold mb-4">Bulk Send Confirmation Emails</h1>
+
+        {/* Filter Controls */}
+        <div className="mb-6 p-4 bg-white rounded-lg shadow-sm border">
+          <span className="font-semibold mr-4 text-gray-700">Filter by Symposium:</span>
+          <label className="inline-flex items-center mr-4">
+            <input
+              type="radio"
+              value="All"
+              checked={filterSymposium === 'All'}
+              onChange={(e) => setFilterSymposium(e.target.value as any)}
+              className="form-radio text-blue-600"
+            />
+            <span className="ml-2 text-gray-700">All</span>
+          </label>
+          <label className="inline-flex items-center mr-4">
+            <input
+              type="radio"
+              value="Enigma"
+              checked={filterSymposium === 'Enigma'}
+              onChange={(e) => setFilterSymposium(e.target.value as any)}
+              className="form-radio text-purple-600"
+            />
+            <span className="ml-2 text-gray-700">Enigma</span>
+          </label>
+          <label className="inline-flex items-center">
+            <input
+              type="radio"
+              value="Carteblanche"
+              checked={filterSymposium === 'Carteblanche'}
+              onChange={(e) => setFilterSymposium(e.target.value as any)}
+              className="form-radio text-pink-600"
+            />
+            <span className="ml-2 text-gray-700">Carteblanche</span>
+          </label>
+        </div>
 
         <div className="mb-4">
           <label htmlFor="subject" className="block text-sm font-medium text-gray-700">Subject</label>
@@ -138,7 +181,7 @@ const BulkSendConfirmationEmailPage: React.FC = () => {
                   <input
                     type="checkbox"
                     onChange={handleSelectAll}
-                    checked={selectedUsers.length === users.length && users.length > 0}
+                    checked={filteredUsers.length > 0 && selectedUsers.length === filteredUsers.length}
                   />
                 </th>
                 <th className="p-2 border-b text-left">Name</th>
@@ -157,7 +200,7 @@ const BulkSendConfirmationEmailPage: React.FC = () => {
                   <td colSpan={4} className="text-center p-4">No users with unconfirmed registrations found.</td>
                 </tr>
               )}
-              {users.map(user => (
+              {filteredUsers.map(user => (
                 <tr key={user.id} className="hover:bg-gray-50">
                   <td className="p-2 border-b text-center">
                     <input
@@ -166,7 +209,10 @@ const BulkSendConfirmationEmailPage: React.FC = () => {
                       onChange={() => handleSelectUser(user.id)}
                     />
                   </td>
-                  <td className="p-2 border-b">{user.fullName}</td>
+                  <td className="p-2 border-b">
+                    {user.fullName}
+                    <div className="text-xs text-gray-500">{user.symposiums || 'Unknown'}</div>
+                  </td>
                   <td className="p-2 border-b">{user.email}</td>
                   <td className="p-2 border-b text-center">{user.unconfirmedItems}</td>
                 </tr>

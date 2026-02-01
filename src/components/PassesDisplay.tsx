@@ -33,7 +33,12 @@ const PassesDisplay: React.FC = () => {
             const response = await fetch(`${API_BASE_URL}/pass-cart/${user.id}`);
             if (response.ok) {
                 const data = await response.json();
-                setCartItems(data);
+                if (Array.isArray(data)) {
+                    setCartItems(data);
+                } else {
+                    console.error("Cart items data is not an array:", data);
+                    setCartItems([]);
+                }
             }
         } catch (error) {
             console.error('Error fetching cart items:', error);
@@ -46,8 +51,13 @@ const PassesDisplay: React.FC = () => {
             const response = await fetch(`${API_BASE_URL}/registrations/verified/${user.id}`);
             if (response.ok) {
                 const data = await response.json();
-                const passIds = data.map((item: any) => item.passId).filter((id: any) => id !== null);
-                setVerifiedPassIds(passIds);
+                if (Array.isArray(data)) {
+                    const passIds = data.map((item: any) => item.passId).filter((id: any) => id !== null);
+                    setVerifiedPassIds(passIds);
+                } else {
+                    console.error("Verified passes data is not an array:", data);
+                    setVerifiedPassIds([]);
+                }
             }
         } catch (error) {
             console.error('Error fetching verified passes:', error);
@@ -60,7 +70,12 @@ const PassesDisplay: React.FC = () => {
                 const response = await fetch(`${API_BASE_URL}/passes`);
                 if (response.ok) {
                     const data = await response.json();
-                    setPasses(data);
+                    if (Array.isArray(data)) {
+                        setPasses(data);
+                    } else {
+                        console.error("Passes data is not an array:", data);
+                        setPasses([]);
+                    }
                 }
             } catch (error) {
                 console.error('Error fetching passes:', error);
@@ -147,9 +162,9 @@ const PassesDisplay: React.FC = () => {
 
     return (
         <>
-            <ThemedModal 
-                isOpen={modal.isOpen} 
-                onClose={() => setModal(prev => ({ ...prev, isOpen: false }))} 
+            <ThemedModal
+                isOpen={modal.isOpen}
+                onClose={() => setModal(prev => ({ ...prev, isOpen: false }))}
                 title={modal.title}
                 hideDefaultFooter={modal.type === 'success'}
             >

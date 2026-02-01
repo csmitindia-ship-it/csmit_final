@@ -126,7 +126,12 @@ const EventsPage: React.FC = () => {
     if (!user || !user.email) return;
     try {
       const response = await axios.get(`${API_BASE_URL}/registrations/by-email/${user.email}`);
-      setRegisteredEvents(response.data.map((reg: any) => reg.eventId));
+      if (Array.isArray(response.data)) {
+        setRegisteredEvents(response.data.map((reg: any) => reg.eventId));
+      } else {
+        console.error('Expected array for registered events but got:', response.data);
+        setRegisteredEvents([]);
+      }
     } catch (error) {
       console.error('Error fetching registered events:', error);
     }
@@ -177,6 +182,11 @@ const EventsPage: React.FC = () => {
   }, [isLoggedIn, user]);
 
   useEffect(() => {
+    if (!Array.isArray(events)) {
+      setEventCategories([]);
+      setActiveCategory(null);
+      return;
+    }
     const symposiumFilteredEvents = events.filter(event => event.symposiumName === activeSymposium);
 
     if (symposiumFilteredEvents.length > 0) {
@@ -197,7 +207,7 @@ const EventsPage: React.FC = () => {
     }
   }, [cartItems]);
 
-  const filteredEvents = events
+  const filteredEvents = Array.isArray(events) ? events
     .filter(event => event.symposiumName === activeSymposium)
     .filter(event => (activeCategory ? event.eventCategory === activeCategory : true))
     .filter(event => {
@@ -207,7 +217,7 @@ const EventsPage: React.FC = () => {
       // For non-MIT students and non-logged-in users, show events that are not explicitly closed to them
       return event.open_to_non_mit !== false && event.open_to_non_mit !== 0;
     })
-    .sort((a, b) => a.eventCategory.localeCompare(b.eventCategory));
+    .sort((a, b) => a.eventCategory.localeCompare(b.eventCategory)) : [];
 
 
   const handleSwitchToSignUp = () => {
@@ -317,8 +327,8 @@ const EventsPage: React.FC = () => {
             <button
               onClick={() => setActiveSymposium('Enigma')}
               className={`px-6 py-3 font-semibold rounded-lg transition-all duration-300 ${activeSymposium === 'Enigma'
-                  ? 'bg-purple-600 text-white scale-105 shadow-lg'
-                  : 'bg-gray-800/60 text-gray-300 hover:bg-purple-500/50'
+                ? 'bg-purple-600 text-white scale-105 shadow-lg'
+                : 'bg-gray-800/60 text-gray-300 hover:bg-purple-500/50'
                 }`}
             >
               Enigma
@@ -327,8 +337,8 @@ const EventsPage: React.FC = () => {
             <button
               onClick={() => setActiveSymposium('Carteblanche')}
               className={`px-6 py-3 font-semibold rounded-lg transition-all duration-300 ${activeSymposium === 'Carteblanche'
-                  ? 'bg-purple-600 text-white scale-105 shadow-lg'
-                  : 'bg-gray-800/60 text-gray-300 hover:bg-purple-500/50'
+                ? 'bg-purple-600 text-white scale-105 shadow-lg'
+                : 'bg-gray-800/60 text-gray-300 hover:bg-purple-500/50'
                 }`}
             >
               Carteblanche
@@ -342,8 +352,8 @@ const EventsPage: React.FC = () => {
                   key={category}
                   onClick={() => setActiveCategory(category)}
                   className={`px-6 py-3 text-sm font-medium transition ${activeCategory === category
-                      ? 'text-purple-400 border-b-2 border-purple-400'
-                      : 'text-gray-400 hover:text-purple-300'
+                    ? 'text-purple-400 border-b-2 border-purple-400'
+                    : 'text-gray-400 hover:text-purple-300'
                     }`}
                 >
                   {category}
@@ -451,16 +461,16 @@ const EventsPage: React.FC = () => {
                             }}
                             disabled={isRegistrationClosed || isCartActionInProgress || isRegistered || hasPassCoverage}
                             className={`mt-4 inline-block px-4 py-2 font-semibold rounded-lg transition ${hasPassCoverage
-                                ? 'bg-teal-600 text-white cursor-not-allowed'
-                                : isRegistered
-                                  ? 'bg-gray-600 text-white cursor-not-allowed'
-                                  : isRegistrationClosed
-                                    ? 'bg-gray-500 text-gray-300 cursor-not-allowed'
-                                    : event.registrationFees === 0
-                                      ? 'bg-green-600 text-white hover:bg-green-700'
-                                      : isInCart
-                                        ? 'bg-red-600 text-white hover:bg-red-700'
-                                        : 'bg-purple-600 text-white hover:bg-purple-700'
+                              ? 'bg-teal-600 text-white cursor-not-allowed'
+                              : isRegistered
+                                ? 'bg-gray-600 text-white cursor-not-allowed'
+                                : isRegistrationClosed
+                                  ? 'bg-gray-500 text-gray-300 cursor-not-allowed'
+                                  : event.registrationFees === 0
+                                    ? 'bg-green-600 text-white hover:bg-green-700'
+                                    : isInCart
+                                      ? 'bg-red-600 text-white hover:bg-red-700'
+                                      : 'bg-purple-600 text-white hover:bg-purple-700'
                               }`}
                           >
                             {hasPassCoverage
