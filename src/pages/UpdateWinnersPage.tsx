@@ -90,9 +90,12 @@ const UpdateWinnersPage: React.FC = () => {
   const handleRoundClick = async (eventId: number, roundNumber: number) => {
     setSelectedRound({ eventId, roundNumber });
     setSearchTerm('');
-    setEligibleMessage('');
-    setIneligibleMessage('');
-    setModalMessage(null);
+    const event = events.find(e => e.id === eventId);
+    if (event) {
+      setEligibleMessage(`<h2 style="color: #2c3e50;">Congratulations!</h2><p>You are <strong>eligible</strong> for <b>${event.eventName}</b> - Round ${roundNumber}.</p><p style="color: green; font-size: 16px;">We are pleased to inform you that you have successfully cleared the current round. Please stay tuned for further instructions regarding the next steps.</p>`);
+      setIneligibleMessage(`<h2 style="color: #e74c3c;">Update</h2><p>Unfortunately, you are <strong>not eligible</strong> for <b>${event.eventName}</b> - Round ${roundNumber}.</p><p style="color: #e74c3c; font-size: 16px;">Thank you for your enthusiastic participation in the event. While you didn't make it to the next round this time, we appreciate your effort and hope to see you in future events.</p>`);
+    }
+
     try {
       const response = await fetch(`${API_BASE_URL}/events/${eventId}/registrations`);
       const data = await response.json();

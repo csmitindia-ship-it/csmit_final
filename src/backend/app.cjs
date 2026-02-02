@@ -32,7 +32,7 @@ const eventPosterDir = path.join(uploadBaseDir, 'event_posters');
 });
 
 /* -------------------- Multer -------------------- */
-const uploadPdf = multer({ storage: multer.memoryStorage(), limits: { fileSize: 2 * 1024 * 1024 } });
+const uploadDocument = multer({ storage: multer.memoryStorage(), limits: { fileSize: 2 * 1024 * 1024 } });
 const uploadEventPoster = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } });
 const uploadTransactionScreenshot = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } });
 
@@ -497,8 +497,8 @@ async function startServer() {
 
   apiRouter.use('/auth', require('./auth.cjs')(db, transporter));
   apiRouter.use('/events', require('./events.cjs')(db, uploadEventPoster, transporter));
-  apiRouter.use('/placements', require('./placements.cjs')(db, uploadPdf));
-  apiRouter.use('/accounts', require('./accounts.cjs')(db, uploadPdf));
+  apiRouter.use('/placements', require('./placements.cjs')(db, uploadDocument));
+  apiRouter.use('/accounts', require('./accounts.cjs')(db, uploadDocument));
   apiRouter.use('/registrations', require('./registrations.cjs')(db, uploadTransactionScreenshot));
   apiRouter.use('/cart', require('./cart.cjs')(db));
   apiRouter.use('/pass-cart', require('./pass_cart.cjs')(db));

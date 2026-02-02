@@ -1,10 +1,10 @@
 const express = require('express');
 
-module.exports = (db, uploadPdf) => {
+module.exports = (db, uploadDocument) => {
   const router = express.Router();
 
   // Add new account details
-  router.post('/', uploadPdf.single('qrCodePdf'), async (req, res) => {
+  router.post('/', uploadDocument.single('qrCodePdf'), async (req, res) => {
 
     const { accountName, bankName, accountNumber, ifscCode } = req.body;
     const qrCodePdf = req.file ? req.file.buffer : null;
@@ -120,7 +120,7 @@ module.exports = (db, uploadPdf) => {
   });
 
   // Update account details
-  router.put('/:id', uploadPdf.single('qrCodePdf'), async (req, res) => {
+  router.put('/:id', uploadDocument.single('qrCodePdf'), async (req, res) => {
     const { id } = req.params;
 
     const { accountName, bankName, accountNumber, ifscCode } = req.body;

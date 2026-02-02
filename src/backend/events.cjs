@@ -3,7 +3,7 @@ const router = express.Router();
 const path = require('path');
 const fs = require('fs');
 
-module.exports = function(db, uploadEventPoster, transporter) {
+module.exports = function (db, uploadEventPoster, transporter) {
   router.post('/', async (req, res) => {
     const {
       symposiumName,
@@ -21,8 +21,8 @@ module.exports = function(db, uploadEventPoster, transporter) {
     } = req.body;
 
     if (!symposiumName || !eventName || !eventCategory || !eventDescription ||
-        numberOfRounds === undefined || !teamOrIndividual || !location ||
-        registrationFees === undefined || !organizerId || !lastDateForRegistration || !rounds) {
+      numberOfRounds === undefined || !teamOrIndividual || !location ||
+      registrationFees === undefined || !organizerId || !lastDateForRegistration || !rounds) {
       return res.status(400).json({ message: 'Missing required event fields.' });
     }
 
@@ -64,7 +64,7 @@ module.exports = function(db, uploadEventPoster, transporter) {
 
       for (const round of rounds) {
         await db.execute(
-          `INSERT INTO ${roundsTable} (eventId, roundNumber, roundDetails, roundDateTime) VALUES (?, ?, ?, ?)`, 
+          `INSERT INTO ${roundsTable} (eventId, roundNumber, roundDetails, roundDateTime) VALUES (?, ?, ?, ?)`,
           [eventId, round.roundNumber, round.roundDetails, round.roundDateTime]
         );
       }
@@ -74,7 +74,7 @@ module.exports = function(db, uploadEventPoster, transporter) {
       res.status(500).json({ message: 'Failed to add event.' });
     }
   });
-router.post('/apply-discount', async (req, res) => {
+  router.post('/apply-discount', async (req, res) => {
     const { symposiumName, eventCategory, discountPercentage, discountReason, isForMIT } = req.body;
 
     if (!symposiumName || !eventCategory || discountPercentage === undefined) {
@@ -144,13 +144,13 @@ router.post('/apply-discount', async (req, res) => {
 
   // [UPDATED] Get specific event (Include discount columns in SELECT)
   router.get('/:id', async (req, res) => {
-     // ... existing setup ...
+    // ... existing setup ...
     const { id } = req.params;
     const { symposium } = req.query;
-    
+
     // ... existing table selection logic ...
     let eventTable;
-    if (symposium === 'Enigma') { eventTable = 'enigma_events'; } 
+    if (symposium === 'Enigma') { eventTable = 'enigma_events'; }
     else if (symposium === 'Carteblanche') { eventTable = 'carte_blanche_events'; }
     else { return res.status(400).json({ message: 'Invalid symposium name.' }); }
 
@@ -171,7 +171,7 @@ router.post('/apply-discount', async (req, res) => {
     const { eventId } = req.params;
     try {
       const [registrations] = await db.execute(
-        `SELECT r.*, u.id as userId, u.fullName as name, u.email, u.mobile, u.department, u.yearOfPassing, u.college \n         FROM registrations r \n         JOIN users u ON r.userEmail = u.email \n         JOIN verified_registrations vr ON u.id = vr.userId AND r.eventId = vr.eventId\n         WHERE r.eventId = ? AND vr.verified = true`, 
+        `SELECT r.*, u.id as userId, u.fullName as name, u.email, u.mobile, u.department, u.yearOfPassing, u.college \n         FROM registrations r \n         JOIN users u ON r.userEmail = u.email \n         JOIN verified_registrations vr ON u.id = vr.userId AND r.eventId = vr.eventId\n         WHERE r.eventId = ? AND vr.verified = true`,
         [eventId]
       );
       res.json(registrations);
@@ -200,9 +200,9 @@ router.post('/apply-discount', async (req, res) => {
     } = req.body;
 
     if (!symposiumName || !eventName || !eventCategory || !eventDescription ||
-        numberOfRounds === undefined || !teamOrIndividual || !location ||
-        registrationFees === undefined || !coordinatorName || !coordinatorContactNo ||
-        !coordinatorMail || !lastDateForRegistration || !rounds) {
+      numberOfRounds === undefined || !teamOrIndividual || !location ||
+      registrationFees === undefined || !coordinatorName || !coordinatorContactNo ||
+      !coordinatorMail || !lastDateForRegistration || !rounds) {
       return res.status(400).json({ message: 'Missing required event fields.' });
     }
 
@@ -237,7 +237,7 @@ router.post('/apply-discount', async (req, res) => {
       await db.execute(`DELETE FROM ${roundsTable} WHERE eventId = ?`, [id]);
       for (const round of rounds) {
         await db.execute(
-          `INSERT INTO ${roundsTable} (eventId, roundNumber, roundDetails, roundDateTime) VALUES (?, ?, ?, ?)`, 
+          `INSERT INTO ${roundsTable} (eventId, roundNumber, roundDetails, roundDateTime) VALUES (?, ?, ?, ?)`,
           [id, round.roundNumber, round.roundDetails, round.roundDateTime]
         );
       }
@@ -336,7 +336,7 @@ router.post('/apply-discount', async (req, res) => {
 
       // Check if already assigned
       const [existingAssignment] = await db.execute(
-        'SELECT * FROM event_accounts WHERE eventId = ? AND accountId = ?', 
+        'SELECT * FROM event_accounts WHERE eventId = ? AND accountId = ?',
         [eventId, accountId]
       );
       if (existingAssignment.length > 0) {
@@ -361,7 +361,7 @@ router.post('/apply-discount', async (req, res) => {
         `SELECT ea.accountId AS id, a.accountName, a.bankName, a.accountNumber, a.ifscCode
          FROM event_accounts ea
          JOIN accounts a ON ea.accountId = a.id
-         WHERE ea.eventId = ?`, 
+         WHERE ea.eventId = ?`,
         [eventId]
       );
       res.status(200).json(rows);
@@ -375,7 +375,7 @@ router.post('/apply-discount', async (req, res) => {
     const { eventId, accountId } = req.params;
     try {
       const [result] = await db.execute(
-        'DELETE FROM event_accounts WHERE eventId = ? AND accountId = ?', 
+        'DELETE FROM event_accounts WHERE eventId = ? AND accountId = ?',
         [eventId, accountId]
       );
       if (result.affectedRows === 0) {
@@ -432,7 +432,7 @@ router.post('/apply-discount', async (req, res) => {
         `SELECT r.*, u.id as userId, u.fullName, u.email, u.mobile, u.college, u.department, u.yearOfPassing 
          FROM registrations r 
          JOIN users u ON r.userEmail = u.email 
-         WHERE r.eventId = ? AND u.email = ?`, 
+         WHERE r.eventId = ? AND u.email = ?`,
         [eventId, email]
       );
 
@@ -524,23 +524,21 @@ router.post('/apply-discount', async (req, res) => {
       const emailSubject = `Update for ${event.eventName} - Round ${roundNumber}`;
 
       if (eligibleUsers.length > 0) {
-  const eligibleEmails = eligibleUsers.map(u => u.email);
-  await transporter.sendMail({
-    from: process.env.EMAIL_USER,
-    to: eligibleEmails.join(', '),
-    subject: emailSubject,
-    text: eligibleMessage, // fallback for email clients not supporting HTML
-    html: `
+        const eligibleEmails = eligibleUsers.map(u => u.email);
+        await transporter.sendMail({
+          from: process.env.EMAIL_USER,
+          to: eligibleEmails.join(', '),
+          subject: emailSubject,
+          text: eligibleMessage, // fallback for email clients not supporting HTML
+          html: `
       <div style="font-family: Arial, sans-serif; line-height: 1.5; color: #333;">
-        <h2 style="color: #2c3e50;">Congratulations!</h2>
-        <p>You are <strong>eligible</strong> for <b>${event.eventName}</b> - Round ${roundNumber}.</p>
-        <p style="color: green; font-size: 16px;">${eligibleMessage}</p>
+        ${eligibleMessage}
         <br/>
         <p style="margin-top: 20px;">Regards,<br/><strong>CSMIT Team</strong></p>
       </div>
     `
-  });
-}
+        });
+      }
 
       if (ineligibleUsers.length > 0) {
         const ineligibleEmails = ineligibleUsers.map(u => u.email);
@@ -551,9 +549,7 @@ router.post('/apply-discount', async (req, res) => {
           text: ineligibleMessage,
           html: `
             <div style="font-family: Arial, sans-serif; line-height: 1.5; color: #333;">
-              <h2 style="color: #e74c3c;">Update</h2>
-              <p>Unfortunately, you are <strong>not eligible</strong> for <b>${event.eventName}</b> - Round ${roundNumber}.</p>
-              <p style="color: #e74c3c; font-size: 16px;">${ineligibleMessage}</p>
+              ${ineligibleMessage}
               <br/>
               <p style="margin-top: 20px;">Regards,<br/><strong>CSMIT Team</strong></p>
             </div>
