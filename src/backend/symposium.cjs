@@ -82,17 +82,13 @@ module.exports = function (db) {
 
 
     try {
-
       const [rows] = await db.execute('SELECT * FROM symposium_status');
-
-
-      res.status(200).json(rows);
+      res.status(200).json({ success: true, data: rows });
     } catch (error) {
-      // This is the most critical log
       console.error('Error fetching symposium status:', error);
       res
         .status(500)
-        .json({ message: "Failed to fetch symposium status." });
+        .json({ success: false, message: "Failed to fetch symposium status." });
     }
   });
 

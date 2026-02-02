@@ -29,8 +29,10 @@ const Header: React.FC<HeaderProps> = ({ setIsLoginModalOpen, setIsSignUpModalOp
       try {
         const response = await fetch(`${API_BASE_URL}/symposium/status`);
         const data = await response.json();
-        if (data) {
-          setSymposiumStatus(data);
+        if (data.success) {
+          setSymposiumStatus(data.data);
+        } else {
+          console.error("Failed to fetch symposium status:", data.message);
         }
       } catch (error) {
         console.error("Error fetching symposium status:", error);
@@ -74,8 +76,8 @@ const Header: React.FC<HeaderProps> = ({ setIsLoginModalOpen, setIsSignUpModalOp
         setIsModalOpen(true);
         const statusResponse = await fetch(`${API_BASE_URL}/symposium/status`);
         const data = await statusResponse.json();
-        if (data) {
-          setSymposiumStatus(data);
+        if (data.success) {
+          setSymposiumStatus(data.data);
         }
       } else {
         setModalTitle("Error");
@@ -103,8 +105,8 @@ const Header: React.FC<HeaderProps> = ({ setIsLoginModalOpen, setIsSignUpModalOp
         setIsModalOpen(true);
         const statusResponse = await fetch(`${API_BASE_URL}/symposium/status`);
         const data = await statusResponse.json();
-        if (data) {
-          setSymposiumStatus(data);
+        if (data.success) {
+          setSymposiumStatus(data.data);
         }
       } else {
         setModalTitle("Error");
@@ -138,7 +140,7 @@ const Header: React.FC<HeaderProps> = ({ setIsLoginModalOpen, setIsSignUpModalOp
           <a href="#about" onClick={(e) => handleNavClick(e, "#about")} className="text-white hover:text-purple-400 transition block py-2 md:py-0">
             About
           </a>
-          <a href="/gallery" onClick={(e) => {e.preventDefault(); navigate("/gallery"); if (isMobileMenuOpen) setIsMobileMenuOpen(false);}} className="text-white hover:text-purple-400 transition block py-2 md:py-0">
+          <a href="/gallery" onClick={(e) => { e.preventDefault(); navigate("/gallery"); if (isMobileMenuOpen) setIsMobileMenuOpen(false); }} className="text-white hover:text-purple-400 transition block py-2 md:py-0">
             Gallery
           </a>
         </>
@@ -186,7 +188,7 @@ const Header: React.FC<HeaderProps> = ({ setIsLoginModalOpen, setIsSignUpModalOp
       )}
       {user?.role === "admin" && (
         <>
-          <button onClick={() => {setIsSymposiumModalOpen(true); if (isMobileMenuOpen) setIsMobileMenuOpen(false);}} className="text-white hover:text-purple-400 transition block py-2 md:py-0 text-left">
+          <button onClick={() => { setIsSymposiumModalOpen(true); if (isMobileMenuOpen) setIsMobileMenuOpen(false); }} className="text-white hover:text-purple-400 transition block py-2 md:py-0 text-left">
             Symposium Control
           </button>
         </>
@@ -279,14 +281,14 @@ const Header: React.FC<HeaderProps> = ({ setIsLoginModalOpen, setIsSignUpModalOp
           ) : (
             <>
               <button
-                onClick={() => {setIsLoginModalOpen(true); if (isMobileMenuOpen) setIsMobileMenuOpen(false);}}
+                onClick={() => { setIsLoginModalOpen(true); if (isMobileMenuOpen) setIsMobileMenuOpen(false); }}
                 className="flex items-center px-4 py-2 text-sm bg-purple-600 text-white rounded-md hover:bg-purple-700 transition"
               >
                 <FiLogIn className="mr-2" />
                 Login
               </button>
               <button
-                onClick={() => {setIsSignUpModalOpen(true); if (isMobileMenuOpen) setIsMobileMenuOpen(false);}}
+                onClick={() => { setIsSignUpModalOpen(true); if (isMobileMenuOpen) setIsMobileMenuOpen(false); }}
                 className="flex items-center px-4 py-2 text-sm border border-purple-400 text-purple-400 rounded-md hover:bg-purple-400 hover:text-black transition"
               >
                 <FiUserPlus className="mr-2" />
@@ -295,21 +297,21 @@ const Header: React.FC<HeaderProps> = ({ setIsLoginModalOpen, setIsSignUpModalOp
             </>
           )}
         </div>
-        
+
         {/* Mobile Menu Button */}
         <div className="md:hidden">
-            <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="text-white">
-                {isMobileMenuOpen ? <FiX size={24} /> : <FiMenu size={24} />}
-            </button>
+          <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="text-white">
+            {isMobileMenuOpen ? <FiX size={24} /> : <FiMenu size={24} />}
+          </button>
         </div>
       </nav>
 
       {/* Mobile Menu */}
       {isMobileMenuOpen && (
         <div className="md:hidden bg-gray-900 px-6 pb-4">
-            <div className="flex flex-col space-y-4">
-              {navLinks}
-              <div className="border-t border-gray-700 pt-4 flex flex-col space-y-4">
+          <div className="flex flex-col space-y-4">
+            {navLinks}
+            <div className="border-t border-gray-700 pt-4 flex flex-col space-y-4">
               {user ? (
                 <>
                   <button
@@ -338,14 +340,14 @@ const Header: React.FC<HeaderProps> = ({ setIsLoginModalOpen, setIsSignUpModalOp
               ) : (
                 <>
                   <button
-                    onClick={() => {setIsLoginModalOpen(true); if (isMobileMenuOpen) setIsMobileMenuOpen(false);}}
+                    onClick={() => { setIsLoginModalOpen(true); if (isMobileMenuOpen) setIsMobileMenuOpen(false); }}
                     className="flex items-center px-4 py-2 text-sm bg-purple-600 text-white rounded-md hover:bg-purple-700 transition"
                   >
                     <FiLogIn className="mr-2" />
                     Login
                   </button>
                   <button
-                    onClick={() => {setIsSignUpModalOpen(true); if (isMobileMenuOpen) setIsMobileMenuOpen(false);}}
+                    onClick={() => { setIsSignUpModalOpen(true); if (isMobileMenuOpen) setIsMobileMenuOpen(false); }}
                     className="flex items-center px-4 py-2 text-sm border border-purple-400 text-purple-400 rounded-md hover:bg-purple-400 hover:text-black transition"
                   >
                     <FiUserPlus className="mr-2" />
@@ -353,8 +355,8 @@ const Header: React.FC<HeaderProps> = ({ setIsLoginModalOpen, setIsSignUpModalOp
                   </button>
                 </>
               )}
-              </div>
             </div>
+          </div>
         </div>
       )}
 
@@ -420,7 +422,7 @@ const Header: React.FC<HeaderProps> = ({ setIsLoginModalOpen, setIsSignUpModalOp
           </div>
         </div>
       </ThemedModal>
-      
+
       {/* ✅ Global Modal for Alerts */}
       <ThemedModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={modalTitle}>
         <p className="text-white">{modalMessage}</p>
