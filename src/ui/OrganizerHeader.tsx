@@ -17,13 +17,12 @@ const OrganizerHeader: React.FC = () => {
   const navLinks = (
     <>
       <Link to="/organizer/registrations/view" onClick={() => setIsMobileMenuOpen(false)} className="hover:text-purple-400 block py-2 md:py-0">View Registrations</Link>
-      <Link to="/organizer/registration-status" onClick={() => setIsMobileMenuOpen(false)} className="hover:text-purple-400 block py-2 md:py-0">Registration Status</Link>
       <Link to="/organizer/update-winners" onClick={() => setIsMobileMenuOpen(false)} className="hover:text-purple-400 block py-2 md:py-0">Update Winners</Link>
     </>
   );
 
   return (
-    <header 
+    <header
       className="bg-gray-900 text-white p-4 sticky top-0 z-20"
       style={{ fontFamily: "'Poppins', sans-serif" }}
     >

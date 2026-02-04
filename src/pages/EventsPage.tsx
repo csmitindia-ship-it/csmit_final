@@ -3,15 +3,16 @@ import Header from '../ui/Header';
 import backgroundImage from '../Login_Sign/photo.jpeg';
 import LoginPage from '../Login_Sign/LoginPage';
 import SignUpPage from '../Login_Sign/SignUpPage';
+import ForgotPassword from '../Login_Sign/Forgot_Pass';
 import Loader from '../components/Loader';
 import { useAuth } from '../context/AuthContext';
 import ThemedModal from '../components/ThemedModal';
 import EventCountdown from '../components/EventCountdown';
-import WorkshopRegistrationModal from '../components/WorkshopRegistrationModal';
 import PassesDisplay from '../components/PassesDisplay';
 import axios from 'axios';
 import API_BASE_URL from '../Config'; // adjust path if needed
 import { useLocation } from 'react-router-dom';
+import OfferBanner from '../components/OfferBanner';
 
 interface Round {
   roundNumber: number;
@@ -48,6 +49,7 @@ const EventsPage: React.FC = () => {
   const [activeSymposium, setActiveSymposium] = useState<'Enigma' | 'Carteblanche'>('Enigma');
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [isSignUpModalOpen, setIsSignUpModalOpen] = useState(false);
+  const [isForgotPasswordModalOpen, setIsForgotPasswordModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [registeredEvents, setRegisteredEvents] = useState<number[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -55,8 +57,6 @@ const EventsPage: React.FC = () => {
   const [eventCategories, setEventCategories] = useState<string[]>([]);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
-  const [isWorkshopModalOpen, setIsWorkshopModalOpen] = useState(false);
-  const [selectedWorkshopEvent] = useState<Event | null>(null);
   const [cartItems, setCartItems] = useState<any[]>([]);
   const [isCartActionInProgress, setIsCartActionInProgress] = useState(false);
   const [symposiumStatus, setSymposiumStatus] = useState<any[]>([]);
@@ -72,8 +72,6 @@ const EventsPage: React.FC = () => {
       setActiveSymposium(symposium);
     }
   }, [location.search]);
-
-  const MIT_COLLEGE_NAME = "Madras Institute of Technology";
 
   const isMITStudentHelper = (collegeName?: string) => {
     if (!collegeName) return false;
@@ -227,7 +225,13 @@ const EventsPage: React.FC = () => {
 
   const handleSwitchToLogin = () => {
     setIsSignUpModalOpen(false);
+    setIsForgotPasswordModalOpen(false);
     setIsLoginModalOpen(true);
+  };
+
+  const handleSwitchToForgotPassword = () => {
+    setIsLoginModalOpen(false);
+    setIsForgotPasswordModalOpen(true);
   };
 
   const handleAddToCart = async (event: Event) => {
@@ -321,7 +325,10 @@ const EventsPage: React.FC = () => {
         <Loader />
       ) : (
         <div className="container mx-auto p-4 pt-20 relative z-10">
-          <h2 className="text-3xl font-bold text-white mb-8 text-center">Events</h2>
+          <div className="fixed top-16 left-0 w-screen z-20">
+            <OfferBanner />
+          </div>
+          <h2 className="text-3xl font-bold text-white mb-8 text-center mt-12">Events</h2>
 
           <div className="flex justify-center items-center gap-4 mb-8">
             <button
@@ -379,15 +386,26 @@ const EventsPage: React.FC = () => {
                 const hasPassCoverage = (isTechnical && hasTechPass) || (isNonTechnical && hasNonTechPass);
 
                 const isMITStudent = isMITStudentHelper(user?.college);
-                let discountToShow;
-                let reasonToShow;
+
+                // Use MIT discount if available and user is MIT student, otherwise fallback to general discount.
+                // If user is NOT MIT student, use general discount only.
+                const mitDiscount = event.mit_discount_percentage || 0;
+                const genDiscount = event.discountPercentage || 0;
+
+                let discountToShow = 0;
+                let reasonToShow = '';
 
                 if (isMITStudent) {
-                  discountToShow = event.mit_discount_percentage;
-                  reasonToShow = '';
+                  if (mitDiscount > 0) {
+                    discountToShow = mitDiscount;
+                    reasonToShow = 'MIT Student Special Discount';
+                  } else if (genDiscount > 0) {
+                    discountToShow = genDiscount;
+                    reasonToShow = event.discountReason || 'Special Discount';
+                  }
                 } else {
-                  discountToShow = event.discountPercentage;
-                  reasonToShow = event.discountReason;
+                  discountToShow = genDiscount;
+                  reasonToShow = event.discountReason || '';
                 }
 
                 return (
@@ -501,7 +519,17 @@ const EventsPage: React.FC = () => {
         isOpen={isLoginModalOpen}
         onClose={() => setIsLoginModalOpen(false)}
         onSwitchToSignUp={handleSwitchToSignUp}
-        onSwitchToForgotPassword={() => { }}
+        onSwitchToForgotPassword={handleSwitchToForgotPassword}
+      />
+      <SignUpPage
+        isOpen={isSignUpModalOpen}
+        onClose={() => setIsSignUpModalOpen(false)}
+        onSwitchToLogin={handleSwitchToLogin}
+      />
+      <ForgotPassword
+        isOpen={isForgotPasswordModalOpen}
+        onClose={() => setIsForgotPasswordModalOpen(false)}
+        onSwitchToLogin={handleSwitchToLogin}
       />
       <ThemedModal
         isOpen={isModalOpen}
@@ -524,8 +552,24 @@ const EventsPage: React.FC = () => {
               <strong>Registration Fees: </strong>
               {(() => {
                 const isMITStudent = isMITStudentHelper(user?.college);
-                const discountToShow = isMITStudent && selectedEvent.mit_discount_percentage ? selectedEvent.mit_discount_percentage : selectedEvent.discountPercentage;
-                const reasonToShow = isMITStudent ? '' : selectedEvent.discountReason;
+                const mitDiscount = selectedEvent.mit_discount_percentage || 0;
+                const genDiscount = selectedEvent.discountPercentage || 0;
+
+                let discountToShow = 0;
+                let reasonToShow = '';
+
+                if (isMITStudent) {
+                  if (mitDiscount > 0) {
+                    discountToShow = mitDiscount;
+                    reasonToShow = 'MIT Student Special Discount';
+                  } else if (genDiscount > 0) {
+                    discountToShow = genDiscount;
+                    reasonToShow = selectedEvent.discountReason || 'Special Discount';
+                  }
+                } else {
+                  discountToShow = genDiscount;
+                  reasonToShow = selectedEvent.discountReason || 'Special Discount';
+                }
 
                 if (discountToShow && discountToShow > 0) {
                   return (

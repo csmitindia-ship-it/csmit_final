@@ -259,10 +259,8 @@ const Header: React.FC<HeaderProps> = ({ setIsLoginModalOpen, setIsSignUpModalOp
                 onClick={() => {
                   if (user.role === "admin") {
                     navigate("/admin");
-                  } else if (user.role === "student") {
-                    navigate("/student-dashboard");
                   } else if (user.role === "organizer") {
-                    navigate("/admin/view-registrations");
+                    navigate("/organizer/registrations/view");
                   }
                   if (isMobileMenuOpen) setIsMobileMenuOpen(false);
                 }}

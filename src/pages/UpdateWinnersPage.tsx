@@ -64,7 +64,7 @@ const ThemedModal = ({
 const UpdateWinnersPage: React.FC = () => {
   const [loading, setLoading] = useState(false); // ✅ moved inside component
   const [events, setEvents] = useState<any[]>([]);
-  const [selectedRound, setSelectedRound] = useState<{ eventId: number; roundNumber: number } | null>(null);
+  const [selectedRound, setSelectedRound] = useState<{ eventId: number; roundNumber: number; symposiumName: string } | null>(null);
   const [registrations, setRegistrations] = useState<Registration[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [eligibleMessage, setEligibleMessage] = useState('');
@@ -88,16 +88,17 @@ const UpdateWinnersPage: React.FC = () => {
   }, []);
 
   const handleRoundClick = async (eventId: number, roundNumber: number) => {
-    setSelectedRound({ eventId, roundNumber });
+    const actualEvent = events.find(e => e.id === eventId && e.rounds.some((r: any) => r.roundNumber === roundNumber));
+    if (!actualEvent) return;
+
+    setSelectedRound({ eventId, roundNumber, symposiumName: actualEvent.symposiumName });
     setSearchTerm('');
-    const event = events.find(e => e.id === eventId);
-    if (event) {
-      setEligibleMessage(`<h2 style="color: #2c3e50;">Congratulations!</h2><p>You are <strong>eligible</strong> for <b>${event.eventName}</b> - Round ${roundNumber}.</p><p style="color: green; font-size: 16px;">We are pleased to inform you that you have successfully cleared the current round. Please stay tuned for further instructions regarding the next steps.</p>`);
-      setIneligibleMessage(`<h2 style="color: #e74c3c;">Update</h2><p>Unfortunately, you are <strong>not eligible</strong> for <b>${event.eventName}</b> - Round ${roundNumber}.</p><p style="color: #e74c3c; font-size: 16px;">Thank you for your enthusiastic participation in the event. While you didn't make it to the next round this time, we appreciate your effort and hope to see you in future events.</p>`);
-    }
+
+    setEligibleMessage(`<h2 style="color: #2c3e50;">Congratulations!</h2><p>You are <strong>eligible</strong> for <b>${actualEvent.eventName}</b> - Round ${roundNumber}.</p><p style="color: green; font-size: 16px;">We are pleased to inform you that you have successfully cleared the current round. Please stay tuned for further instructions regarding the next steps.</p>`);
+    setIneligibleMessage(`<h2 style="color: #e74c3c;">Update</h2><p>Unfortunately, you are <strong>not eligible</strong> for <b>${actualEvent.eventName}</b> - Round ${roundNumber}.</p><p style="color: #e74c3c; font-size: 16px;">Thank you for your enthusiastic participation in the event. While you didn't make it to the next round this time, we appreciate your effort and hope to see you in future events.</p>`);
 
     try {
-      const response = await fetch(`${API_BASE_URL}/events/${eventId}/registrations`);
+      const response = await fetch(`${API_BASE_URL}/events/${eventId}/registrations?symposium=${actualEvent.symposiumName}`);
       const data = await response.json();
       if (response.ok) {
         setRegistrations(data);
@@ -114,7 +115,7 @@ const UpdateWinnersPage: React.FC = () => {
     if (selectedRound) {
       try {
         const response = await fetch(
-          `${API_BASE_URL}/events/${selectedRound.eventId}/rounds/${selectedRound.roundNumber}/eligible`,
+          `${API_BASE_URL}/events/${selectedRound.eventId}/rounds/${selectedRound.roundNumber}/eligible?symposium=${selectedRound.symposiumName}`,
           {
             method: 'POST',
             headers: {
@@ -147,7 +148,7 @@ const UpdateWinnersPage: React.FC = () => {
       setModalMessage(null);  // reset old message
       try {
         const response = await fetch(
-          `${API_BASE_URL}/events/${selectedRound.eventId}/rounds/${selectedRound.roundNumber}/notify`,
+          `${API_BASE_URL}/events/${selectedRound.eventId}/rounds/${selectedRound.roundNumber}/notify?symposium=${selectedRound.symposiumName}`,
           {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },

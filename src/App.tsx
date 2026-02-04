@@ -83,7 +83,7 @@ export default function App() {
     if (user?.role === "organizer" && path.startsWith("/organizer")) {
       return <OrganizerHeader />;
     }
-    return <Header setIsLoginModalOpen={() => {}} setIsSignUpModalOpen={() => {}} />;
+    return <Header setIsLoginModalOpen={() => { }} setIsSignUpModalOpen={() => { }} />;
   };
 
   if (showIntro) {
@@ -152,7 +152,6 @@ export default function App() {
             <Route index element={<Navigate to="registrations/view" replace />} />
             <Route path="registrations/view" element={<AdminViewRegistrationsOverviewPage />} />
             <Route path="events/registrations/:eventId" element={<ViewEventRegistrationsPage />} />
-            <Route path="registration-status" element={<RegistrationStatusPage />} />
             <Route path="update-winners" element={<UpdateWinnersPage />} />
           </Route>
         </Route>
@@ -165,11 +164,11 @@ export default function App() {
           <Route path="/login" element={<LoginWrapper />} />
           <Route
             path="/signup"
-            element={<SignUpPage isOpen={false} onClose={() => {}} onSwitchToLogin={() => {}} />}
+            element={<SignUpPage isOpen={false} onClose={() => { }} onSwitchToLogin={() => { }} />}
           />
           <Route
             path="/forgot-password"
-            element={<ForgotPassword isOpen={false} onClose={() => {}} onSwitchToLogin={() => {}} />}
+            element={<ForgotPassword isOpen={false} onClose={() => { }} onSwitchToLogin={() => { }} />}
           />
         </Route>
 

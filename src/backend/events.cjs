@@ -169,10 +169,20 @@ module.exports = function (db, uploadEventPoster, transporter) {
 
   router.get('/:eventId/registrations', async (req, res) => {
     const { eventId } = req.params;
+    const { symposium } = req.query;
+
+    if (!symposium) {
+      return res.status(400).json({ message: 'Symposium query parameter is required.' });
+    }
+
     try {
       const [registrations] = await db.execute(
-        `SELECT r.*, u.id as userId, u.fullName as name, u.email, u.mobile, u.department, u.yearOfPassing, u.college \n         FROM registrations r \n         JOIN users u ON r.userEmail = u.email \n         JOIN verified_registrations vr ON u.id = vr.userId AND r.eventId = vr.eventId\n         WHERE r.eventId = ? AND vr.verified = true`,
-        [eventId]
+        `SELECT r.*, u.id as userId, u.fullName as name, u.email, u.mobile, u.department, u.yearOfPassing, u.college 
+         FROM registrations r 
+         JOIN users u ON r.userEmail = u.email 
+         JOIN verified_registrations vr ON u.id = vr.userId AND r.eventId = vr.eventId
+         WHERE r.eventId = ? AND r.symposium = ? AND vr.verified = true`,
+        [eventId, symposium]
       );
       res.json(registrations);
     } catch (error) {
@@ -449,6 +459,11 @@ module.exports = function (db, uploadEventPoster, transporter) {
   router.post('/:eventId/rounds/:roundNumber/eligible', async (req, res) => {
     const { eventId, roundNumber } = req.params;
     const { userId, status } = req.body;
+    const { symposium } = req.query;
+
+    if (!symposium) {
+      return res.status(400).json({ message: 'Symposium query parameter is required.' });
+    }
 
     if (!userId || status === undefined) {
       return res.status(400).json({ message: 'userId and status are required.' });
@@ -471,8 +486,8 @@ module.exports = function (db, uploadEventPoster, transporter) {
       const userEmail = user.email;
 
       const [result] = await db.execute(
-        `UPDATE registrations SET ${roundColumn} = ? WHERE userEmail = ? AND eventId = ?`,
-        [status, userEmail, eventId]
+        `UPDATE registrations SET ${roundColumn} = ? WHERE userEmail = ? AND eventId = ? AND symposium = ?`,
+        [status, userEmail, eventId, symposium]
       );
 
       if (result.affectedRows === 0) {
@@ -488,14 +503,19 @@ module.exports = function (db, uploadEventPoster, transporter) {
   router.post('/:eventId/rounds/:roundNumber/notify', async (req, res) => {
     const { eventId, roundNumber } = req.params;
     const { eligibleMessage, ineligibleMessage } = req.body;
+    const { symposium } = req.query;
+
+    if (!symposium) {
+      return res.status(400).json({ message: 'Symposium query parameter is required.' });
+    }
 
     try {
       const [registrations] = await db.execute(
         `SELECT r.*, u.email 
          FROM registrations r 
          JOIN users u ON r.userEmail = u.email 
-         WHERE r.eventId = ?`,
-        [eventId]
+         WHERE r.eventId = ? AND r.symposium = ?`,
+        [eventId, symposium]
       );
 
       if (registrations.length === 0) {

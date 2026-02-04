@@ -88,9 +88,9 @@ module.exports = function (db) {
             return null;
           }
 
-          // [UPDATED] Added discountPercentage and discountReason to the SELECT query
+          // [UPDATED] Added discountPercentage, mit_discount_percentage and discountReason to the SELECT query
           const [eventDetails] = await db.execute(
-            `SELECT eventName, eventCategory, eventDescription, registrationFees, lastDateForRegistration, coordinatorName, coordinatorContactNo, discountPercentage, discountReason 
+            `SELECT eventName, eventCategory, eventDescription, registrationFees, lastDateForRegistration, coordinatorName, coordinatorContactNo, discountPercentage, mit_discount_percentage, discountReason 
              FROM ${eventTable} WHERE id = ?`,
             [item.eventId]
           );
@@ -145,14 +145,14 @@ module.exports = function (db) {
             );
 
             if (accommodationDetails.length > 0) {
-              return { 
-                ...item, 
-                type: 'accommodation', 
+              return {
+                ...item,
+                type: 'accommodation',
                 accommodationDetails: {
                   name: `Accommodation (${item.gender})`,
                   cost: accommodationDetails[0].fees,
                   quantity: item.quantity
-                } 
+                }
               };
             }
             return null;
