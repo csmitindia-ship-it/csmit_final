@@ -551,13 +551,19 @@ module.exports = function (db, uploadTransactionScreenshot) {
         }
       };
 
+      const [symposiumStatusRows] = await db.execute('SELECT symposiumName, isOpen FROM symposium_status');
+      const symposiumStatus = symposiumStatusRows.reduce((acc, row) => {
+        acc[row.symposiumName] = row.isOpen === 1;
+        return acc;
+      }, {});
+
       if (hasTechPass) {
-        await fetchEventsByCategory('Tech', 'Enigma');
-        await fetchEventsByCategory('Tech', 'Carteblanche');
+        if (symposiumStatus['Enigma']) await fetchEventsByCategory('Tech', 'Enigma');
+        if (symposiumStatus['Carteblanche']) await fetchEventsByCategory('Tech', 'Carteblanche');
       }
       if (hasNonTechPass) {
-        await fetchEventsByCategory('Non-Tech', 'Enigma');
-        await fetchEventsByCategory('Non-Tech', 'Carteblanche');
+        if (symposiumStatus['Enigma']) await fetchEventsByCategory('Non-Tech', 'Enigma');
+        if (symposiumStatus['Carteblanche']) await fetchEventsByCategory('Non-Tech', 'Carteblanche');
       }
 
       res.status(200).json(registrationsWithDetails);
