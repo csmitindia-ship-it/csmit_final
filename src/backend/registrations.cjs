@@ -2,11 +2,61 @@ const express = require('express');
 const router = express.Router();
 
 module.exports = function (db, uploadTransactionScreenshot) {
+
+  // Helper function to "explode" a verified pass into individual event registrations
+  async function explodePassRegistration(executor, userId, passId, transactionId) {
+    const [passes] = await executor.execute('SELECT * FROM passes WHERE id = ?', [passId]);
+    if (passes.length === 0) return;
+    const pass = passes[0];
+
+    // Identify Tech vs Non-Tech
+    let category = '';
+    const passNameLower = pass.name.toLowerCase();
+
+    if (passNameLower.includes('non-tech') || passNameLower.includes('non tech') || passNameLower.includes('nontech')) {
+      category = 'Non-Technical Events';
+    } else if (passNameLower.includes('tech')) {
+      category = 'Technical Events';
+    } else {
+      return; // Not a category pass we handle for explosion
+    }
+
+    // Fetch Events
+    const [events] = await executor.execute(`
+        SELECT id, 'Enigma' as symposium FROM enigma_events WHERE eventCategory = ?
+        UNION ALL
+        SELECT id, 'Carteblanche' as symposium FROM carte_blanche_events WHERE eventCategory = ?
+    `, [category, category]);
+
+    // Get User Details for Registration Entry
+    const [users] = await executor.execute('SELECT fullName, email, mobile FROM users WHERE id = ?', [userId]);
+    if (users.length === 0) return;
+    const user = users[0];
+
+    // Insert Registrations & Verified Registrations
+    for (const event of events) {
+      const [existing] = await executor.execute('SELECT id FROM registrations WHERE userEmail = ? AND eventId = ?', [user.email, event.id]);
+      if (existing.length === 0) {
+        await executor.execute(`
+          INSERT INTO registrations 
+          (symposium, eventId, userName, userEmail, mobileNumber, transactionId, transactionAmount, round1, round2, round3)
+          VALUES (?, ?, ?, ?, ?, ?, 0, 0, 0, 0)
+        `, [event.symposium, event.id, user.fullName, user.email, user.mobile || null, 'PASS_ENTRY']);
+      }
+
+      await executor.execute('DELETE FROM verified_registrations WHERE userId = ? AND eventId = ?', [userId, event.id]);
+      await executor.execute(
+        'INSERT INTO verified_registrations (userId, eventId, passId, verified, transactionId) VALUES (?, ?, ?, ?, ?)',
+        [userId, event.id, passId, 1, transactionId]
+      );
+    }
+  }
+
   router.get('/all', async (req, res) => {
     try {
       const [registrations] = await db.execute(`
         SELECT 
-            r.id,
+            MIN(r.id) as id,
             u.id as userId,
             r.symposium,
             r.eventId,
@@ -41,6 +91,12 @@ module.exports = function (db, uploadTransactionScreenshot) {
         LEFT JOIN passes p ON r.passId = p.id
         LEFT JOIN verified_registrations vr ON u.id = vr.userId AND ((r.eventId IS NOT NULL AND r.eventId = vr.eventId) OR (r.passId IS NOT NULL AND r.passId = vr.passId))
         LEFT JOIN accommodation_bookings ab ON u.id = ab.userId AND r.symposium = 'Accommodation'
+        WHERE (r.transactionId IS NULL OR r.transactionId != 'PASS_ENTRY')
+        GROUP BY r.transactionId, u.id, r.symposium, r.eventId, r.passId, r.userName, r.userEmail, 
+                 r.mobileNumber, r.transactionUsername, r.transactionTime, r.transactionDate, 
+                 r.transactionAmount, r.transactionScreenshot, u.college, ee.eventName, cbe.eventName, 
+                 p.name, vr.verified, ab.status
+        ORDER BY MAX(r.createdAt) DESC
       `);
       res.status(200).json(registrations);
     } catch (error) {
@@ -153,8 +209,8 @@ module.exports = function (db, uploadTransactionScreenshot) {
 
           await connection.execute(
             `INSERT INTO registrations 
-             (symposium, eventId, userName, userEmail, mobileNumber, transactionId, transactionUsername, transactionTime, transactionDate, transactionAmount, transactionScreenshot) 
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+             (symposium, eventId, userName, userEmail, mobileNumber, transactionId, transactionUsername, transactionTime, transactionDate, transactionAmount, transactionScreenshot, round1, round2, round3) 
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 0)`,
             [
               event.symposium,
               eventId,
@@ -190,8 +246,12 @@ module.exports = function (db, uploadTransactionScreenshot) {
             console.warn(`Already registered for pass ${pass.name}. Skipping.`);
             continue;
           }
+          const [symposiumStatus] = await connection.execute(
+            'SELECT symposiumName FROM symposium_status WHERE isOpen = 1'
+          );
+          const activeSymposium = symposiumStatus.length > 0 ? symposiumStatus[0].symposiumName : 'Carteblanche';
 
-          const symposium = pass.name.toLowerCase().includes('tech') ? 'Enigma' : 'Carteblanche';
+          const symposium = activeSymposium;
 
           await connection.execute(
             `INSERT INTO registrations 
@@ -340,7 +400,7 @@ module.exports = function (db, uploadTransactionScreenshot) {
     const { eventId } = req.params;
     try {
       const [registrations] = await db.execute(
-        `SELECT r.transactionId, r.transactionUsername, r.transactionTime, r.transactionDate, r.transactionAmount, 
+        `SELECT r.id, r.transactionId, r.transactionUsername, r.transactionTime, r.transactionDate, r.transactionAmount, 
                 u.fullName as userName, u.email, u.college, u.mobile AS mobileNumber 
          FROM registrations r 
          JOIN users u ON r.userEmail = u.email 
@@ -386,6 +446,7 @@ module.exports = function (db, uploadTransactionScreenshot) {
       );
       res.status(200).json(verifiedItems);
     } catch (error) {
+      console.error('Error fetching verified items:', error);
       res.status(500).json({ message: 'Failed to fetch verified items.' });
     }
   });
@@ -436,8 +497,8 @@ module.exports = function (db, uploadTransactionScreenshot) {
 
       await db.execute(
         `INSERT INTO registrations 
-         (symposium, eventId, userName, userEmail, transactionAmount) 
-         VALUES (?, ?, ?, ?, ?)`,
+         (symposium, eventId, userName, userEmail, transactionAmount, round1, round2, round3) 
+         VALUES (?, ?, ?, ?, ?, 0, 0, 0)`,
         [
           event.symposium,
           eventId,
@@ -470,8 +531,14 @@ module.exports = function (db, uploadTransactionScreenshot) {
                 IF(r.passId IS NOT NULL, 'pass', 'event') as itemType
          FROM registrations r
          JOIN users u ON r.userEmail = u.email
-         JOIN verified_registrations vr ON u.id = vr.userId AND ((r.eventId IS NOT NULL AND r.eventId = vr.eventId) OR (r.passId IS NOT NULL AND r.passId = vr.passId))
-         WHERE u.id = ? AND vr.verified = 1`,
+         JOIN verified_registrations vr ON u.id = vr.userId 
+           AND (
+             (r.eventId IS NOT NULL AND r.eventId = vr.eventId) 
+             OR 
+             (r.passId IS NOT NULL AND r.eventId IS NULL AND vr.passId = r.passId AND vr.eventId IS NULL)
+           )
+         WHERE u.id = ? AND vr.verified = 1
+         GROUP BY r.id`,
         [userId]
       );
 
@@ -479,6 +546,8 @@ module.exports = function (db, uploadTransactionScreenshot) {
       const eventIds = new Set();
       let hasTechPass = false;
       let hasNonTechPass = false;
+      let techPassRounds = { r1: 0, r2: 0, r3: 0 };
+      let nonTechPassRounds = { r1: 0, r2: 0, r3: 0 };
 
       for (const reg of allRegistrations) {
         if (reg.itemType === 'event') {
@@ -517,21 +586,27 @@ module.exports = function (db, uploadTransactionScreenshot) {
           );
           if (pass) {
             registrationsWithDetails.push({ ...reg, pass });
-            if (pass.name.toLowerCase().includes('tech')) {
-              hasTechPass = true;
-            }
-            if (pass.name.toLowerCase().includes('non-tech')) {
+            const passNameLower = pass.name.toLowerCase();
+            const passRounds = { r1: reg.round1, r2: reg.round2, r3: reg.round3 };
+
+            // IMPORTANT: Check 'non-tech' FIRST before 'tech' because 'non-tech' contains 'tech'
+            if (passNameLower.includes('non-tech') || passNameLower.includes('nontech') || passNameLower.includes('non tech')) {
               hasNonTechPass = true;
+              nonTechPassRounds = passRounds;
+            } else if (passNameLower.includes('tech')) {
+              hasTechPass = true;
+              techPassRounds = passRounds;
             }
           }
         }
       }
 
-      const fetchEventsByCategory = async (category, symposium) => {
+
+      const fetchEventsByCategory = async (category, symposium, rounds) => {
         const eventTable = symposium === 'Enigma' ? 'enigma_events' : 'carte_blanche_events';
         const roundsTable = symposium === 'Enigma' ? 'enigma_rounds' : 'carte_blanche_rounds';
 
-        const [events] = await db.execute(`SELECT * FROM ${eventTable} WHERE eventCategory LIKE ?`, [`%${category}%`]);
+        const [events] = await db.execute(`SELECT * FROM ${eventTable} WHERE eventCategory = ?`, [category]);
 
         for (const event of events) {
           if (!eventIds.has(event.id)) {
@@ -542,7 +617,7 @@ module.exports = function (db, uploadTransactionScreenshot) {
               itemType: 'event',
               eventId: event.id,
               symposium,
-              round1: 1, round2: 1, round3: 1, // Pass Unlocked
+              round1: rounds.r1, round2: rounds.r2, round3: rounds.r3,
               pass: { name: 'Pass Unlocked' },
               event,
             });
@@ -558,12 +633,12 @@ module.exports = function (db, uploadTransactionScreenshot) {
       }, {});
 
       if (hasTechPass) {
-        if (symposiumStatus['Enigma']) await fetchEventsByCategory('Tech', 'Enigma');
-        if (symposiumStatus['Carteblanche']) await fetchEventsByCategory('Tech', 'Carteblanche');
+        if (symposiumStatus['Enigma']) await fetchEventsByCategory('Technical Events', 'Enigma', techPassRounds);
+        if (symposiumStatus['Carteblanche']) await fetchEventsByCategory('Technical Events', 'Carteblanche', techPassRounds);
       }
       if (hasNonTechPass) {
-        if (symposiumStatus['Enigma']) await fetchEventsByCategory('Non-Tech', 'Enigma');
-        if (symposiumStatus['Carteblanche']) await fetchEventsByCategory('Non-Tech', 'Carteblanche');
+        if (symposiumStatus['Enigma']) await fetchEventsByCategory('Non-Technical Events', 'Enigma', nonTechPassRounds);
+        if (symposiumStatus['Carteblanche']) await fetchEventsByCategory('Non-Technical Events', 'Carteblanche', nonTechPassRounds);
       }
 
       res.status(200).json(registrationsWithDetails);
@@ -622,7 +697,7 @@ module.exports = function (db, uploadTransactionScreenshot) {
           }
 
           await connection.execute(
-            `INSERT INTO registrations (symposium, eventId, userName, userEmail, mobileNumber, transactionId, transactionAmount) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+            `INSERT INTO registrations (symposium, eventId, userName, userEmail, mobileNumber, transactionId, transactionAmount, round1, round2, round3) VALUES (?, ?, ?, ?, ?, ?, ?, 0, 0, 0)`,
             [symposium, eventId, user.fullName, user.email, user.mobile || null, 'ADMIN_REG', 0]
           );
 
@@ -648,7 +723,11 @@ module.exports = function (db, uploadTransactionScreenshot) {
             continue;
           }
 
-          const symposium = pass.name.toLowerCase().includes('tech') ? 'Enigma' : 'Carteblanche';
+          // Use the active symposium for passes (consistent with user payment flow)
+          const [symposiumStatus] = await connection.execute(
+            'SELECT symposiumName FROM symposium_status WHERE isOpen = 1'
+          );
+          const symposium = symposiumStatus.length > 0 ? symposiumStatus[0].symposiumName : 'Carteblanche';
 
           await connection.execute(
             `INSERT INTO registrations (symposium, passId, userName, userEmail, mobileNumber, transactionId, transactionAmount) VALUES (?, ?, ?, ?, ?, ?, ?)`,
@@ -659,6 +738,9 @@ module.exports = function (db, uploadTransactionScreenshot) {
             'INSERT INTO verified_registrations (userId, passId, verified) VALUES (?, ?, ?)',
             [userId, passId, true]
           );
+
+          // [EXPLOSION] Trigger pass explosion to create individual event registrations
+          await explodePassRegistration(connection, userId, passId, 'ADMIN_REG');
         }
       }
 
@@ -674,6 +756,22 @@ module.exports = function (db, uploadTransactionScreenshot) {
       }
       console.error('Admin registration failed:', error);
       res.status(500).json({ message: error.message || 'Failed to register user.' });
+    }
+  });
+
+
+  // Delete registration by ID
+  router.delete('/:id', async (req, res) => {
+    const { id } = req.params;
+    try {
+      const [result] = await db.execute('DELETE FROM registrations WHERE id = ?', [id]);
+      if (result.affectedRows === 0) {
+        return res.status(404).json({ message: 'Registration not found.' });
+      }
+      res.status(200).json({ message: 'Registration deleted successfully.' });
+    } catch (error) {
+      console.error('Error deleting registration:', error);
+      res.status(500).json({ message: 'Failed to delete registration.' });
     }
   });
 

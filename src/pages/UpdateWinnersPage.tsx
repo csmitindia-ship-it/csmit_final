@@ -87,11 +87,12 @@ const UpdateWinnersPage: React.FC = () => {
     fetchEvents();
   }, []);
 
-  const handleRoundClick = async (eventId: number, roundNumber: number) => {
-    const actualEvent = events.find(e => e.id === eventId && e.rounds.some((r: any) => r.roundNumber === roundNumber));
+  const handleRoundClick = async (eventId: number, roundNumber: number, symposiumName: string) => {
+    const actualEvent = events.find(e => e.id === eventId && e.symposiumName === symposiumName && e.rounds.some((r: any) => r.roundNumber === roundNumber));
     if (!actualEvent) return;
 
     setSelectedRound({ eventId, roundNumber, symposiumName: actualEvent.symposiumName });
+    // ... rest of function ...
     setSearchTerm('');
 
     setEligibleMessage(`<h2 style="color: #2c3e50;">Congratulations!</h2><p>You are <strong>eligible</strong> for <b>${actualEvent.eventName}</b> - Round ${roundNumber}.</p><p style="color: green; font-size: 16px;">We are pleased to inform you that you have successfully cleared the current round. Please stay tuned for further instructions regarding the next steps.</p>`);
@@ -127,11 +128,12 @@ const UpdateWinnersPage: React.FC = () => {
         const data = await response.json();
         setModalMessage(data.message);
         if (response.ok) {
-          // Optimistically update the UI
+          // Optimistically update the UI (map 0 to -1 for the CrossIcon to show)
+          const dbStatus = status === 1 ? 1 : -1;
           setRegistrations((prev) =>
             prev.map((reg) =>
               reg.userId === userId
-                ? { ...reg, [`round${selectedRound.roundNumber}`]: status }
+                ? { ...reg, [`round${selectedRound.roundNumber}`]: dbStatus }
                 : reg
             )
           );
@@ -229,7 +231,7 @@ const UpdateWinnersPage: React.FC = () => {
           <h2 className="text-xl font-semibold mb-4">Events</h2>
           <div className="space-y-4">
             {filteredEvents.map((event) => (
-              <div key={event.id} className="bg-gray-800 p-4 rounded-lg">
+              <div key={`${event.symposiumName}-${event.id}`} className="bg-gray-800 p-4 rounded-lg">
                 <h3 className="font-bold text-lg">
                   {event.eventName} ({event.symposiumName})
                 </h3>
@@ -237,9 +239,10 @@ const UpdateWinnersPage: React.FC = () => {
                   {event.rounds.map((round: any) => (
                     <button
                       key={round.roundNumber}
-                      onClick={() => handleRoundClick(event.id, round.roundNumber)}
+                      onClick={() => handleRoundClick(event.id, round.roundNumber, event.symposiumName)}
                       className={`w-full text-left p-2 rounded-md ${selectedRound?.eventId === event.id &&
-                        selectedRound?.roundNumber === round.roundNumber
+                        selectedRound?.roundNumber === round.roundNumber &&
+                        selectedRound?.symposiumName === event.symposiumName
                         ? 'bg-purple-600'
                         : 'bg-gray-700 hover:bg-gray-600'
                         }`}
@@ -295,7 +298,7 @@ const UpdateWinnersPage: React.FC = () => {
                           <p className="text-sm text-gray-400">{reg.email}</p>
                         </div>
                         {roundStatus === 1 && <TickIcon />}
-                        {roundStatus === 0 && <CrossIcon />}
+                        {roundStatus === -1 && <CrossIcon />}
                       </div>
                       <div className="flex gap-2">
                         <button

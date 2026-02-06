@@ -482,11 +482,15 @@ async function connectToDatabase() {
 
 /* -------------------- Mail -------------------- */
 const transporter = nodemailer.createTransport({
-  service: 'gmail',
+  host: 'smtp.gmail.com',
+  port: 587,
+  secure: false, // true for 465, false for other ports
   auth: {
     user: 'csmitindia@gmail.com',
     pass: 'kjue fgfj pwqy fqvk'
-  }
+  },
+  connectionTimeout: 10000,
+  debug: true // Show debug logs for email
 });
 
 /* -------------------- Server Start -------------------- */
@@ -508,7 +512,7 @@ async function startServer() {
   apiRouter.use('/timer', require('./timer.cjs')(db));
   apiRouter.use('/passes', require('./passes.cjs')(db));
   apiRouter.use('/accommodation', require('./accommodation.cjs')(db));
-  apiRouter.use('/email', require('./email.cjs')(db, transporter));
+  apiRouter.use('/email', require('./email.cjs')(db, transporter, uploadDocument));
   apiRouter.use('/offer', require('./offer.cjs')(db));
 
   app.use('/api', apiRouter);

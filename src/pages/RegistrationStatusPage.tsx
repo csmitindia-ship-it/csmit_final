@@ -59,8 +59,11 @@ const RegistrationStatusPage: React.FC = () => {
 
 
   const handleVerify = async (registration: Registration, isBulk = false) => {
-    if (!registration) return;
-    console.log('Verifying registration:', registration);
+    if (!registration) return false;
+    if (!registration.id) {
+      alert('Invalid registration: ID is missing.');
+      return false;
+    }
     try {
       if (registration.itemType === 'accommodation') {
         await axios.put(`${API_BASE_URL}/accommodation/bookings/user/${registration.userId}/verify`);
@@ -77,7 +80,6 @@ const RegistrationStatusPage: React.FC = () => {
       setSelectedRegistration(null);
       return true;
     } catch (error: any) {
-      console.error('Error verifying user:', error);
       const errorMessage = error.response?.data?.message || 'Failed to verify user.';
       if (!isBulk) {
         alert(errorMessage);
@@ -88,7 +90,10 @@ const RegistrationStatusPage: React.FC = () => {
 
   const handleReject = async (registration: Registration) => {
     if (!registration) return;
-    console.log('Rejecting registration:', registration);
+    if (!registration.id) {
+      alert('Invalid registration: ID is missing.');
+      return;
+    }
     try {
       if (registration.itemType === 'accommodation') {
         await axios.delete(`${API_BASE_URL}/accommodation/bookings/user/${registration.userId}`);

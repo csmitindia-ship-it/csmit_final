@@ -177,15 +177,52 @@ module.exports = function (db, uploadEventPoster, transporter) {
 
     try {
       const [registrations] = await db.execute(
-        `SELECT r.*, u.id as userId, u.fullName as name, u.email, u.mobile, u.department, u.yearOfPassing, u.college 
-         FROM registrations r 
-         JOIN users u ON r.userEmail = u.email 
-         JOIN verified_registrations vr ON u.id = vr.userId AND r.eventId = vr.eventId
-         WHERE r.eventId = ? AND r.symposium = ? AND vr.verified = true`,
-        [eventId, symposium]
+        `SELECT 
+            u.id as userId, 
+            u.fullName as name, 
+            u.email, 
+            u.mobile, 
+            u.department, 
+            u.yearOfPassing, 
+            u.college,
+            MAX(COALESCE(r_event.id, r_pass.id)) as id,
+            u.email as userEmail,
+            ? as eventId,
+            MAX(COALESCE(r_event.round1, r_pass.round1, 0)) as round1,
+            MAX(COALESCE(r_event.round2, r_pass.round2, 0)) as round2,
+            MAX(COALESCE(r_event.round3, r_pass.round3, 0)) as round3,
+            MAX(COALESCE(r_event.symposium, r_pass.symposium)) as symposium
+         FROM users u
+         JOIN (
+            -- Case 1: Direct verified registration for this event
+            SELECT DISTINCT userId FROM verified_registrations 
+            WHERE eventId = ? AND verified = true
+            
+            UNION -- Use UNION to remove duplicates between direct and pass access
+            
+            -- Case 2: User has a verified pass that unlocks this event category
+            SELECT DISTINCT vr.userId
+            FROM verified_registrations vr
+            JOIN passes p ON vr.passId = p.id
+            JOIN (
+                SELECT id, eventCategory, 'Enigma' as symposium FROM enigma_events WHERE id = ?
+                UNION ALL
+                SELECT id, eventCategory, 'Carteblanche' as symposium FROM carte_blanche_events WHERE id = ?
+            ) e ON (
+                ((p.name LIKE '%non-tech%' OR p.name LIKE '%non tech%' OR p.name LIKE '%nontech%') AND e.eventCategory = 'Non-Technical Events') OR
+                (p.name LIKE '%tech%' AND NOT (p.name LIKE '%non-tech%' OR p.name LIKE '%non tech%' OR p.name LIKE '%nontech%') AND e.eventCategory = 'Technical Events')
+            )
+            WHERE vr.verified = true
+         ) vr_all ON u.id = vr_all.userId
+         LEFT JOIN registrations r_event ON u.email = r_event.userEmail AND r_event.eventId = ? AND r_event.symposium = ?
+         LEFT JOIN registrations r_pass ON u.email = r_pass.userEmail AND r_pass.passId IS NOT NULL AND r_pass.symposium = ?
+         WHERE (r_event.id IS NOT NULL OR r_pass.id IS NOT NULL)
+         GROUP BY u.id, u.fullName, u.email, u.mobile, u.department, u.yearOfPassing, u.college`,
+        [eventId, eventId, eventId, eventId, eventId, symposium, symposium]
       );
       res.json(registrations);
     } catch (error) {
+      console.error('Error fetching registrations:', error);
       res.status(500).json({ message: 'Failed to fetch registrations.' });
     }
   });
@@ -473,13 +510,15 @@ module.exports = function (db, uploadEventPoster, transporter) {
       return res.status(400).json({ message: 'Status must be 0 or 1.' });
     }
 
+    const dbStatus = Number(status) === 1 ? 1 : -1;
+
     const roundColumn = `round${roundNumber}`;
     if (!['round1', 'round2', 'round3'].includes(roundColumn)) {
       return res.status(400).json({ message: 'Invalid round number.' });
     }
 
     try {
-      const [[user]] = await db.execute('SELECT email FROM users WHERE id = ?', [userId]);
+      const [[user]] = await db.execute('SELECT fullName, email, mobile FROM users WHERE id = ?', [userId]);
       if (!user) {
         return res.status(404).json({ message: 'User not found.' });
       }
@@ -487,7 +526,7 @@ module.exports = function (db, uploadEventPoster, transporter) {
 
       const [result] = await db.execute(
         `UPDATE registrations SET ${roundColumn} = ? WHERE userEmail = ? AND eventId = ? AND symposium = ?`,
-        [status, userEmail, eventId, symposium]
+        [dbStatus, userEmail, eventId, symposium]
       );
 
       if (result.affectedRows === 0) {
@@ -496,6 +535,7 @@ module.exports = function (db, uploadEventPoster, transporter) {
 
       res.status(200).json({ message: `Round ${roundNumber} status updated successfully.` });
     } catch (error) {
+      console.error('Error updating round status:', error);
       res.status(500).json({ message: 'Failed to update round status.' });
     }
   });

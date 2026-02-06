@@ -2,11 +2,19 @@ const express = require('express');
 const router = express.Router();
 require('dotenv').config();
 
-module.exports = function (db, transporter) {
+module.exports = function (db, transporter, uploadDocument) {
 
   // Get users with verified registrations who haven't received a confirmation email
   router.get('/unconfirmed-users', async (req, res) => {
     try {
+      // Fetch currently open symposium
+      const [openStatus] = await db.execute('SELECT symposiumName FROM symposium_status WHERE isOpen = 1');
+      const openSymposiums = openStatus.map(s => s.symposiumName);
+      // Fallback to Carteblanche or Enigma if nothing is open, or just use the first open one
+      const activeSymp = openSymposiums.length > 0 ? openSymposiums[0] : 'Carteblanche';
+
+      const { includeSent } = req.query;
+
       const [users] = await db.execute(`
         SELECT
           u.id,
@@ -17,8 +25,8 @@ module.exports = function (db, transporter) {
             CASE
               WHEN ee.id IS NOT NULL THEN 'Enigma'
               WHEN cbe.id IS NOT NULL THEN 'Carteblanche'
-              WHEN p.id IS NOT NULL AND p.name LIKE '%Tech%' THEN 'Enigma'
-              ELSE 'Carteblanche'
+              WHEN p.id IS NOT NULL THEN ?
+              ELSE 'General'
             END
           ) as symposiums
         FROM users u
@@ -26,10 +34,10 @@ module.exports = function (db, transporter) {
         LEFT JOIN enigma_events ee ON vr.eventId = ee.id
         LEFT JOIN carte_blanche_events cbe ON vr.eventId = cbe.id
         LEFT JOIN passes p ON vr.passId = p.id
-        WHERE vr.verified = true AND vr.confirmation_email_sent = false
+        WHERE vr.verified = true ${includeSent === 'true' ? '' : 'AND vr.confirmation_email_sent = false'}
         GROUP BY u.id, u.fullName, u.email
         HAVING unconfirmedItems > 0
-      `);
+      `, [activeSymp]);
       res.status(200).json(users);
     } catch (error) {
       console.error('Failed to fetch unconfirmed users:', error);
@@ -38,8 +46,19 @@ module.exports = function (db, transporter) {
   });
 
   // Send confirmation emails in bulk
-  router.post('/bulk-send-confirmation', async (req, res) => {
-    const { userIds, subject, emailContent, symposium } = req.body;
+  router.post('/bulk-send-confirmation', uploadDocument.single('attachment'), async (req, res) => {
+    let { userIds, subject, emailContent, symposium, forceResend } = req.body;
+
+    // If coming from FormData, userIds might be a JSON string
+    if (typeof userIds === 'string') {
+      try {
+        userIds = JSON.parse(userIds);
+      } catch (e) {
+        console.error('Failed to parse userIds from body:', e);
+      }
+    }
+
+    const attachment = req.file;
 
     if (!Array.isArray(userIds) || userIds.length === 0 || !subject) {
       return res.status(400).json({ message: 'User IDs array and subject are required.' });
@@ -66,7 +85,7 @@ module.exports = function (db, transporter) {
              LEFT JOIN enigma_events ee ON vr.eventId = ee.id
              LEFT JOIN carte_blanche_events cbe ON vr.eventId = cbe.id
              LEFT JOIN passes p ON vr.passId = p.id
-             WHERE vr.userId = ? AND vr.verified = true AND vr.confirmation_email_sent = false
+             WHERE vr.userId = ? AND vr.verified = true ${forceResend === 'true' || forceResend === true ? '' : 'AND vr.confirmation_email_sent = false'}
           `;
 
           const queryParams = [userId];
@@ -99,12 +118,21 @@ module.exports = function (db, transporter) {
             <p>CSMIT Team</p>
           `;
 
-          await transporter.sendMail({
+          const mailOptions = {
             from: `"CSMIT Team" <${process.env.EMAIL_USER}>`,
             to: user.email,
             subject: subject,
             html: htmlBody,
-          });
+          };
+
+          if (attachment) {
+            mailOptions.attachments = [{
+              filename: attachment.originalname,
+              content: attachment.buffer
+            }];
+          }
+
+          await transporter.sendMail(mailOptions);
 
           await connection.execute(
             'UPDATE verified_registrations SET confirmation_email_sent = true WHERE userId = ? AND verified = true',

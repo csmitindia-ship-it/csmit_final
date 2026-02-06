@@ -2,6 +2,64 @@ const express = require('express');
 const router = express.Router();
 
 module.exports = function (db) {
+
+  // Helper function to "explode" a verified pass into individual event registrations
+  async function explodePassRegistration(executor, userId, passId, transactionId) {
+    // 1. Get Pass Details
+    // Adjust column usage based on your schema. Assuming 'passes' has 'name'.
+    const [passes] = await executor.execute('SELECT * FROM passes WHERE id = ?', [passId]);
+    if (passes.length === 0) return;
+    const pass = passes[0];
+
+    // 2. Identify Tech vs Non-Tech
+    let category = '';
+    const passNameLower = pass.name.toLowerCase();
+
+    // STRICT check for Non-Tech
+    if (passNameLower.includes('non-tech') || passNameLower.includes('non tech') || passNameLower.includes('nontech')) {
+      category = 'Non-Technical Events';
+    }
+    // If not non-tech, check for tech
+    else if (passNameLower.includes('tech')) {
+      category = 'Technical Events';
+    } else {
+      return; // Not a category pass we handle for explosion
+    }
+
+    // 3. Fetch Events
+    const [events] = await executor.execute(`
+        SELECT id, 'Enigma' as symposium FROM enigma_events WHERE eventCategory = ?
+        UNION ALL
+        SELECT id, 'Carteblanche' as symposium FROM carte_blanche_events WHERE eventCategory = ?
+    `, [category, category]);
+
+    // 4. Get User Details for Registration Entry
+    const [users] = await executor.execute('SELECT fullName, email, mobile FROM users WHERE id = ?', [userId]);
+    if (users.length === 0) return;
+    const user = users[0];
+
+    // 5. Insert Registrations & Verified Registrations
+    for (const event of events) {
+      // A. Ensure 'registrations' row exists
+      const [existing] = await executor.execute('SELECT id FROM registrations WHERE userEmail = ? AND eventId = ?', [user.email, event.id]);
+      if (existing.length === 0) {
+        await executor.execute(`
+                INSERT INTO registrations 
+                (symposium, eventId, userName, userEmail, mobileNumber, transactionId, transactionAmount, round1, round2, round3)
+                VALUES (?, ?, ?, ?, ?, ?, 0, 0, 0, 0)
+             `, [event.symposium, event.id, user.fullName, user.email, user.mobile || null, 'PASS_ENTRY']);
+      }
+
+      // B. Ensure 'verified_registrations' row exists 
+      // (Clean up old duplicate if any, though unlikely if clean)
+      await executor.execute('DELETE FROM verified_registrations WHERE userId = ? AND eventId = ?', [userId, event.id]);
+      await executor.execute(
+        'INSERT INTO verified_registrations (userId, eventId, passId, verified, transactionId) VALUES (?, ?, ?, ?, ?)',
+        [userId, event.id, passId, 1, transactionId]
+      );
+    }
+  }
+
   // Manual toggle of verification status (Admin Panel Toggle)
   router.post('/', async (req, res) => {
     const { userId, verified, transactionId } = req.body;
@@ -25,16 +83,21 @@ module.exports = function (db) {
       }
 
       // 2. INSERT new authoritative record (ONLY IF VERIFIED)
-      // If verified is false (rejected), we simply remove the record (step 1) and do not insert anything.
       if (verified) {
         await db.execute(
           'INSERT INTO verified_registrations (userId, eventId, passId, verified, transactionId) VALUES (?, ?, ?, ?, ?)',
           [userId, eventId, passId, verified, transactionId || null]
         );
+
+        // [EXPLODE PASS] If verifying a pass, explode it!
+        if (passId) {
+          await explodePassRegistration(db, userId, passId, transactionId || 'ADMIN_VERIFY');
+        }
       }
 
       res.status(200).json({ message: 'Verification status updated successfully.' });
     } catch (error) {
+      console.error('Error verifying:', error);
       res.status(500).json({ message: 'An error occurred while updating verification status.' });
     }
   });
@@ -82,14 +145,13 @@ module.exports = function (db) {
 
         // --- CASE A: ACCOMMODATION ---
         if (reg.symposium === 'Accommodation') {
-          // 1. Try to find the booking (by TransactionID or fallback to UserID)
+          // (Accommodation logic unchanged)
           let [bookings] = await connection.execute(
             'SELECT * FROM accommodation_bookings WHERE userId = ? AND transactionId = ?',
             [userId, transactionId]
           );
 
           if (bookings.length === 0) {
-            // Fallback: Find by UserId and (Pending or Rejected)
             [bookings] = await connection.execute(
               'SELECT * FROM accommodation_bookings WHERE userId = ? AND status IN ("pending", "rejected") ORDER BY id DESC LIMIT 1',
               [userId]
@@ -97,21 +159,14 @@ module.exports = function (db) {
           }
           if (bookings.length > 0) {
             const booking = bookings[0];
-
-            if (booking.status === 'confirmed') {
-              // Already confirmed
-            } else {
-              // If REJECTED, we must deduct inventory again (since rejection released it)
+            if (booking.status !== 'confirmed') {
               if (booking.status === 'rejected') {
                 const { gender, quantity } = booking;
-                // Deduct rooms
                 await connection.execute(
                   'UPDATE accommodation SET available_rooms = available_rooms - ? WHERE gender = ?',
                   [quantity, gender]
                 );
               }
-
-              // Update status to confirmed and ensure transactionId is linked
               await connection.execute(
                 'UPDATE accommodation_bookings SET status = "confirmed", transactionId = ? WHERE id = ?',
                 [transactionId, booking.id]
@@ -138,6 +193,12 @@ module.exports = function (db) {
             'INSERT INTO verified_registrations (userId, eventId, passId, verified, transactionId) VALUES (?, ?, ?, ?, ?)',
             [userId, eventId, passId, 1, transactionId]
           );
+
+          // [EXPLODE PASS] If verifying a pass, explode it!
+          if (passId) {
+            await explodePassRegistration(connection, userId, passId, transactionId);
+          }
+
           itemsVerified++;
         }
       }
@@ -151,6 +212,7 @@ module.exports = function (db) {
       res.status(201).json({ message: `Transaction verified successfully. ${itemsVerified} items confirmed.` });
 
     } catch (error) {
+      console.error('Verification error:', error);
       if (connection) await connection.rollback();
       res.status(500).json({ message: 'An error occurred during verification.' });
     } finally {

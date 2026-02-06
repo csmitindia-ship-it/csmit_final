@@ -75,8 +75,8 @@ const EventsPage: React.FC = () => {
 
   const isMITStudentHelper = (collegeName?: string) => {
     if (!collegeName) return false;
-    const lowerCaseCollege = collegeName.toLowerCase().trim();
-    return lowerCaseCollege === "madras institute of technology" || lowerCaseCollege === "mit";
+    const lowerCaseCollege = collegeName.toLowerCase().replace(/[^a-z0-9]/g, '');
+    return lowerCaseCollege.includes('madrasinstituteoftechnology') || lowerCaseCollege === 'mit';
   };
 
   const isSymposiumOpen = (symposiumName: 'Enigma' | 'Carteblanche') => {
@@ -152,6 +152,10 @@ const EventsPage: React.FC = () => {
       const passNames = response.data
         .filter((item: any) => item.passId !== null && item.passName)
         .map((item: any) => item.passName);
+
+      // DEBUG: Log fetched passes
+      console.log('[DEBUG] Fetched verified passes for user:', passNames);
+
       setActivePasses(passNames);
     } catch (error) {
       console.error('Error fetching verified passes:', error);
@@ -166,6 +170,27 @@ const EventsPage: React.FC = () => {
       fetchCartItems();
       fetchVerifiedPasses();
     }
+
+    // Auto-switch symposium if the default one is empty
+    const checkAndSwitchSymposium = async () => {
+      try {
+        const response = await axios.get(`${API_BASE_URL}/events`);
+        const allEvents: Event[] = response.data;
+        if (Array.isArray(allEvents) && allEvents.length > 0) {
+          const params = new URLSearchParams(location.search);
+          if (!params.get('symposium')) {
+            const hasEnigma = allEvents.some(e => e.symposiumName === 'Enigma');
+            const hasCB = allEvents.some(e => e.symposiumName === 'Carteblanche');
+            if (!hasEnigma && hasCB && activeSymposium === 'Enigma') {
+              setActiveSymposium('Carteblanche');
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Error in auto-switch logic:', err);
+      }
+    };
+    checkAndSwitchSymposium();
 
     const handleRegistrationComplete = () => {
       fetchRegisteredEvents();
@@ -209,11 +234,9 @@ const EventsPage: React.FC = () => {
     .filter(event => event.symposiumName === activeSymposium)
     .filter(event => (activeCategory ? event.eventCategory === activeCategory : true))
     .filter(event => {
-      if (user && isMITStudentHelper(user.college)) {
-        return true; // MIT students see all events
-      }
-      // For non-MIT students and non-logged-in users, show events that are not explicitly closed to them
-      return event.open_to_non_mit !== false && event.open_to_non_mit !== 0;
+      // Show all events in the list for browsing
+      // Restrictions will be handled at the registration button level
+      return true;
     })
     .sort((a, b) => a.eventCategory.localeCompare(b.eventCategory)) : [];
 
@@ -379,11 +402,27 @@ const EventsPage: React.FC = () => {
                 const isInCart = cartItems.some(item => item.eventId === event.id);
                 const symposiumStarted = isSymposiumOpen(activeSymposium);
 
-                const hasTechPass = activePasses.some(pass => pass.toLowerCase().includes('technical'));
-                const hasNonTechPass = activePasses.some(pass => pass.toLowerCase().includes('non-technical'));
-                const isTechnical = event.eventCategory.toLowerCase().includes('technical');
-                const isNonTechnical = event.eventCategory.toLowerCase().includes('non-technical');
-                const hasPassCoverage = (isTechnical && hasTechPass) || (isNonTechnical && hasNonTechPass);
+                // Check if user has tech or non-tech pass
+                // Check if user has tech or non-tech pass
+                const hasTechPass = activePasses.some(pass => {
+                  const passLower = pass.toLowerCase();
+                  return passLower.includes('tech') &&
+                    !passLower.includes('non-tech') &&
+                    !passLower.includes('nontech') &&
+                    !passLower.includes('non tech');
+                });
+                const hasNonTechPass = activePasses.some(pass => {
+                  const passLower = pass.toLowerCase();
+                  return passLower.includes('non-tech') ||
+                    passLower.includes('nontech') ||
+                    passLower.includes('non tech');
+                });
+
+                // Check if event is technical or non-technical
+                const isTechnicalEvent = event.eventCategory.toLowerCase().includes('technical') && !event.eventCategory.toLowerCase().includes('non');
+                const isNonTechnicalEvent = event.eventCategory.toLowerCase().includes('non-technical') || event.eventCategory.toLowerCase().includes('non technical');
+
+                const hasPassCoverage = (isTechnicalEvent && hasTechPass) || (isNonTechnicalEvent && hasNonTechPass);
 
                 const isMITStudent = isMITStudentHelper(user?.college);
 
@@ -477,7 +516,7 @@ const EventsPage: React.FC = () => {
                                 }
                               }
                             }}
-                            disabled={isRegistrationClosed || isCartActionInProgress || isRegistered || hasPassCoverage}
+                            disabled={isRegistrationClosed || isCartActionInProgress || isRegistered || hasPassCoverage || !isLoggedIn || (!isMITStudent && event.open_to_non_mit === 0)}
                             className={`mt-4 inline-block px-4 py-2 font-semibold rounded-lg transition ${hasPassCoverage
                               ? 'bg-teal-600 text-white cursor-not-allowed'
                               : isRegistered
@@ -495,13 +534,17 @@ const EventsPage: React.FC = () => {
                               ? 'Pass Obtained'
                               : isRegistered
                                 ? 'Registered'
-                                : isRegistrationClosed
-                                  ? 'Registration Closed'
-                                  : event.registrationFees === 0
-                                    ? 'Register for Free'
-                                    : isInCart
-                                      ? 'Remove from Cart'
-                                      : 'Add to Cart'}
+                                : !isLoggedIn
+                                  ? 'Login to Register'
+                                  : (!isMITStudent && event.open_to_non_mit === 0)
+                                    ? 'MIT Only Event'
+                                    : isRegistrationClosed
+                                      ? 'Registration Closed'
+                                      : event.registrationFees === 0
+                                        ? 'Register for Free'
+                                        : isInCart
+                                          ? 'Remove from Cart'
+                                          : 'Add to Cart'}
                           </button>
                         </>
                       )}

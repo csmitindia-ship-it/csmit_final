@@ -102,17 +102,29 @@ const EnrolledEventsPage: React.FC = () => {
     }
   }, [isLoggedIn, user]);
 
-  const getStatusText = (status: any, roundDate: Date) => {
+  const getStatusText = (status: any, roundDate: Date, roundNumber: number, registration: any) => {
+    const numericStatus = Number(status);
     const now = new Date();
 
-    if (status === 1) return <span className="text-green-400">Selected</span>;
-    if (status === 0) return <span className="text-red-400">Not selected</span>;
+    if (numericStatus === 1) {
+      if (registration.event && roundNumber === registration.event.numberOfRounds) {
+        return <span className="text-green-400">Completed</span>;
+      }
+      return <span className="text-green-400">Selected for next round</span>;
+    }
+
+    if (numericStatus === -1) {
+      return <span className="text-red-400">Not Selected</span>;
+    }
 
     if (roundDate > now) {
       return <span className="text-gray-400">Yet to happen</span>;
     }
 
-    if (status === null || status === -1) return <span className="text-yellow-400">Not attended</span>;
+    if (status === null || numericStatus === 0) {
+      // If roundDate < now and status is 0, it means they didn't attend or weren't marked
+      return <span className="text-yellow-400">{roundDate < now ? 'Not attended' : 'Status Pending'}</span>;
+    }
 
     return <span className="text-gray-400">Status unknown</span>;
   };
@@ -207,14 +219,17 @@ const EnrolledEventsPage: React.FC = () => {
             <div className="max-w-7xl mx-auto flex flex-wrap justify-center gap-8">
               {registrations.map((registration) => {
                 if (registration.itemType === 'event' && registration.event) {
-                  const hasBeenRejected = (Number(registration.round1) === 0 || Number(registration.round2) === 0 || Number(registration.round3) === 0);
+                  let hasBeenRejected = false;
                   let hasNotAttended = false;
-                  if (registration.event.rounds) {
+                  if (registration.event && registration.event.rounds) {
+                    hasBeenRejected = registration.event.rounds.some(round =>
+                      Number(registration[`round${round.roundNumber}` as 'round1' | 'round2' | 'round3']) === -1
+                    );
                     hasNotAttended = registration.event.rounds.some(round => {
                       const roundStatus = Number(registration[`round${round.roundNumber}` as 'round1' | 'round2' | 'round3']);
                       const roundDate = new Date(round.roundDateTime);
                       const now = new Date();
-                      return roundDate < now && roundStatus === -1;
+                      return roundDate < now && roundStatus === 0;
                     });
                   }
                   const cardTheme = hasBeenRejected
@@ -225,7 +240,7 @@ const EnrolledEventsPage: React.FC = () => {
 
                   const renderRoundStatus = () => {
                     return registration.event?.rounds?.map(round => (
-                      <li key={round.roundNumber}>Round {round.roundNumber}: {getStatusText(registration[`round${round.roundNumber}` as 'round1' | 'round2' | 'round3'], new Date(round.roundDateTime))}</li>
+                      <li key={round.roundNumber}>Round {round.roundNumber}: {getStatusText(registration[`round${round.roundNumber}` as 'round1' | 'round2' | 'round3'], new Date(round.roundDateTime), round.roundNumber, registration)}</li>
                     ));
                   };
 
