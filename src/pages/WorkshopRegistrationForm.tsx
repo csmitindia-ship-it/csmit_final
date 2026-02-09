@@ -175,7 +175,7 @@ const WorkshopRegistrationForm: React.FC<WorkshopRegistrationFormProps> = ({
       return;
     }
 
-    if (!user) {
+    if (!user || !user.id) {
       alert('You must be logged in to register.');
       return;
     }
@@ -362,7 +362,7 @@ const WorkshopRegistrationForm: React.FC<WorkshopRegistrationFormProps> = ({
               />
             </div>
             <div className="mb-6">
-              <label htmlFor="transactionScreenshot" className="block text-sm font-medium text-gray-400 mb-2">Transaction Screenshot</label>
+              <label htmlFor="transactionScreenshot" className="block text-sm font-medium text-gray-400 mb-2">Transaction Screenshot (Limit: 5MB)</label>
               <input
                 type="file"
                 id="transactionScreenshot"
