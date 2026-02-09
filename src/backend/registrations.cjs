@@ -763,15 +763,53 @@ module.exports = function (db, uploadTransactionScreenshot) {
   // Delete registration by ID
   router.delete('/:id', async (req, res) => {
     const { id } = req.params;
+    let connection;
     try {
-      const [result] = await db.execute('DELETE FROM registrations WHERE id = ?', [id]);
-      if (result.affectedRows === 0) {
+      connection = await db.getConnection();
+      await connection.beginTransaction();
+
+      // 1. Get the registration details before deleting
+      const [[registration]] = await connection.execute(
+        'SELECT r.userEmail, r.eventId, r.passId, u.id as userId FROM registrations r LEFT JOIN users u ON r.userEmail = u.email WHERE r.id = ?',
+        [id]
+      );
+
+      if (!registration) {
+        await connection.rollback();
         return res.status(404).json({ message: 'Registration not found.' });
       }
+
+      // 2. Delete from verified_registrations if userId exists
+      if (registration.userId) {
+        if (registration.eventId) {
+          await connection.execute(
+            'DELETE FROM verified_registrations WHERE userId = ? AND eventId = ?',
+            [registration.userId, registration.eventId]
+          );
+        } else if (registration.passId) {
+          // For passes, also delete all exploded event verified_registrations linked to this pass
+          await connection.execute(
+            'DELETE FROM verified_registrations WHERE userId = ? AND passId = ?',
+            [registration.userId, registration.passId]
+          );
+        }
+      }
+
+      // 3. Delete the registration itself
+      const [result] = await connection.execute('DELETE FROM registrations WHERE id = ?', [id]);
+      if (result.affectedRows === 0) {
+        await connection.rollback();
+        return res.status(404).json({ message: 'Registration not found.' });
+      }
+
+      await connection.commit();
       res.status(200).json({ message: 'Registration deleted successfully.' });
     } catch (error) {
+      if (connection) await connection.rollback();
       console.error('Error deleting registration:', error);
       res.status(500).json({ message: 'Failed to delete registration.' });
+    } finally {
+      if (connection) connection.release();
     }
   });
 
