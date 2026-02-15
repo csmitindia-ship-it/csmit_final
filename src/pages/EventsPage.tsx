@@ -1,9 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import Header from '../ui/Header';
+
 import backgroundImage from '../Login_Sign/photo.jpeg';
-import LoginPage from '../Login_Sign/LoginPage';
-import SignUpPage from '../Login_Sign/SignUpPage';
-import ForgotPassword from '../Login_Sign/Forgot_Pass';
+import { useModal } from '../context/ModalContext';
 import Loader from '../components/Loader';
 import { useAuth } from '../context/AuthContext';
 import ThemedModal from '../components/ThemedModal';
@@ -47,9 +45,6 @@ interface Event {
 const EventsPage: React.FC = () => {
   const [events, setEvents] = useState<Event[]>([]);
   const [activeSymposium, setActiveSymposium] = useState<'Enigma' | 'Carteblanche'>('Enigma');
-  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
-  const [isSignUpModalOpen, setIsSignUpModalOpen] = useState(false);
-  const [isForgotPasswordModalOpen, setIsForgotPasswordModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [registeredEvents, setRegisteredEvents] = useState<number[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -63,6 +58,8 @@ const EventsPage: React.FC = () => {
   const [activePasses, setActivePasses] = useState<string[]>([]);
 
   const { user, isLoggedIn, loading: authLoading } = useAuth();
+  const { openLoginModal } = useModal();
+
   const location = useLocation();
 
   useEffect(() => {
@@ -241,25 +238,11 @@ const EventsPage: React.FC = () => {
     .sort((a, b) => a.eventCategory.localeCompare(b.eventCategory)) : [];
 
 
-  const handleSwitchToSignUp = () => {
-    setIsLoginModalOpen(false);
-    setIsSignUpModalOpen(true);
-  };
 
-  const handleSwitchToLogin = () => {
-    setIsSignUpModalOpen(false);
-    setIsForgotPasswordModalOpen(false);
-    setIsLoginModalOpen(true);
-  };
-
-  const handleSwitchToForgotPassword = () => {
-    setIsLoginModalOpen(false);
-    setIsForgotPasswordModalOpen(true);
-  };
 
   const handleAddToCart = async (event: Event) => {
     if (!isLoggedIn) {
-      setIsLoginModalOpen(true);
+      openLoginModal();
       return;
     }
 
@@ -339,10 +322,6 @@ const EventsPage: React.FC = () => {
 
       <div className="absolute inset-0 bg-black/70 z-0"></div>
 
-      <Header
-        setIsLoginModalOpen={setIsLoginModalOpen}
-        setIsSignUpModalOpen={setIsSignUpModalOpen}
-      />
 
       {isLoading || authLoading ? (
         <Loader />
@@ -558,22 +537,7 @@ const EventsPage: React.FC = () => {
       )}
 
       <PassesDisplay />
-      <LoginPage
-        isOpen={isLoginModalOpen}
-        onClose={() => setIsLoginModalOpen(false)}
-        onSwitchToSignUp={handleSwitchToSignUp}
-        onSwitchToForgotPassword={handleSwitchToForgotPassword}
-      />
-      <SignUpPage
-        isOpen={isSignUpModalOpen}
-        onClose={() => setIsSignUpModalOpen(false)}
-        onSwitchToLogin={handleSwitchToLogin}
-      />
-      <ForgotPassword
-        isOpen={isForgotPasswordModalOpen}
-        onClose={() => setIsForgotPasswordModalOpen(false)}
-        onSwitchToLogin={handleSwitchToLogin}
-      />
+
       <ThemedModal
         isOpen={isModalOpen}
         onClose={() => {

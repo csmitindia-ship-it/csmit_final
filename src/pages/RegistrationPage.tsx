@@ -1,9 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import Header from '../ui/Header';
-import LoginPage from '../Login_Sign/LoginPage';
-import SignUpPage from '../Login_Sign/SignUpPage';
-import ForgotPassword from '../Login_Sign/Forgot_Pass';
+import { useModal } from '../context/ModalContext';
+
 import backgroundImage from '../Login_Sign/photo.jpeg';
 import { useSearchParams } from 'react-router-dom';
 import GeneralRegistrationForm from './GeneralRegistrationForm';
@@ -14,9 +12,7 @@ import axios from 'axios';
 
 const RegistrationPage: React.FC = () => {
   const { user } = useAuth();
-  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
-  const [isSignUpModalOpen, setIsSignUpModalOpen] = useState(false);
-  const [isForgotPasswordModalOpen, setIsForgotPasswordModalOpen] = useState(false);
+  const { openLoginModal } = useModal();
   const [searchParams] = useSearchParams();
   const eventId = searchParams.get('eventId');
   const symposium = searchParams.get('symposium');
@@ -52,21 +48,6 @@ const RegistrationPage: React.FC = () => {
     checkRegistrationStatus();
   }, [eventId, symposium, user]);
 
-  const handleSwitchToSignUp = () => {
-    setIsLoginModalOpen(false);
-    setIsSignUpModalOpen(true);
-  };
-
-  const handleSwitchToLogin = () => {
-    setIsSignUpModalOpen(false);
-    setIsForgotPasswordModalOpen(false);
-    setIsLoginModalOpen(true);
-  };
-
-  const handleSwitchToForgotPassword = () => {
-    setIsLoginModalOpen(false);
-    setIsForgotPasswordModalOpen(true);
-  };
 
   const handleRegistrationSuccess = () => {
     setIsRegistered(true);
@@ -82,37 +63,21 @@ const RegistrationPage: React.FC = () => {
       <div className="min-h-screen bg-gray-900 text-white p-8 flex flex-col items-center justify-center">
         <p className="text-xl mb-4">You need to be logged in to access this page.</p>
         <button
-          onClick={() => setIsLoginModalOpen(true)}
+          onClick={() => openLoginModal()}
           className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition"
         >
           Login
         </button>
-        <LoginPage 
-            isOpen={isLoginModalOpen} 
-            onClose={() => setIsLoginModalOpen(false)} 
-            onSwitchToSignUp={handleSwitchToSignUp} 
-            onSwitchToForgotPassword={handleSwitchToForgotPassword} 
-        />
-        <SignUpPage 
-            isOpen={isSignUpModalOpen} 
-            onClose={() => setIsSignUpModalOpen(false)} 
-            onSwitchToLogin={handleSwitchToLogin} 
-        />
-        <ForgotPassword 
-            isOpen={isForgotPasswordModalOpen} 
-            onClose={() => setIsForgotPasswordModalOpen(false)} 
-            onSwitchToLogin={handleSwitchToLogin} 
-        />
       </div>
     );
   }
 
   return (
-    <> 
+    <>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap');
       `}</style>
-      <div 
+      <div
         className="relative min-h-screen font-sans text-gray-200 overflow-x-hidden"
         style={{
           fontFamily: "'Poppins', sans-serif",
@@ -127,10 +92,6 @@ const RegistrationPage: React.FC = () => {
 
         <div className="absolute inset-0 bg-black/70 z-0"></div>
 
-        <Header 
-          setIsLoginModalOpen={setIsLoginModalOpen} 
-          setIsSignUpModalOpen={setIsSignUpModalOpen} 
-        />
         <div className="pt-20 p-8 relative z-10">
           <h1 className="text-3xl font-bold mb-6">Registration Page</h1>
           <div className="bg-gray-800/80 p-6 rounded-lg shadow-lg">
@@ -144,9 +105,9 @@ const RegistrationPage: React.FC = () => {
               {symposium === 'Enigma' && event.eventCategory === 'Workshop' ? (
                 <WorkshopRegistrationForm
                   cartItems={[{
-                    cartId: parseInt(eventId, 10),
+                    cartId: parseInt(eventId || '0', 10),
                     type: 'event',
-                    eventId: parseInt(eventId, 10),
+                    eventId: parseInt(eventId || '0', 10),
                     symposiumName: symposium,
                     eventDetails: event
                   }]}
@@ -154,7 +115,7 @@ const RegistrationPage: React.FC = () => {
                   onCancel={handleCancel}
                 />
               ) : (
-                <GeneralRegistrationForm 
+                <GeneralRegistrationForm
                   eventName={event.eventName}
                   userName={user.name || ''}
                   userEmail={user.email}
@@ -166,22 +127,6 @@ const RegistrationPage: React.FC = () => {
             </>
           )}
         </div>
-        <LoginPage 
-            isOpen={isLoginModalOpen} 
-            onClose={() => setIsLoginModalOpen(false)} 
-            onSwitchToSignUp={handleSwitchToSignUp} 
-            onSwitchToForgotPassword={handleSwitchToForgotPassword} 
-        />
-        <SignUpPage 
-            isOpen={isSignUpModalOpen} 
-            onClose={() => setIsSignUpModalOpen(false)} 
-            onSwitchToLogin={handleSwitchToLogin} 
-        />
-        <ForgotPassword 
-            isOpen={isForgotPasswordModalOpen} 
-            onClose={() => setIsForgotPasswordModalOpen(false)} 
-            onSwitchToLogin={handleSwitchToLogin} 
-        />
       </div>
     </>
   );

@@ -1,10 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import ExperienceForm from './ExperienceForm';
 import backgroundImage from '../Login_Sign/photo.jpeg';
-import Header from '../ui/Header';
-import LoginPage from '../Login_Sign/LoginPage';
-import SignUpPage from '../Login_Sign/SignUpPage';
-import ForgotPassword from '../Login_Sign/Forgot_Pass';
+
 import Loader from '../components/Loader'; // Import Loader component
 import API_BASE_URL from '../Config'; // adjust path if needed
 
@@ -24,9 +21,6 @@ const PlacementsPage: React.FC = () => {
   const [approvedExperiences, setApprovedExperiences] = useState<Experience[]>([]);
   const [expandedCompany, setExpandedCompany] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState<string>('');
-  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
-  const [isSignUpModalOpen, setIsSignUpModalOpen] = useState(false);
-  const [isForgotPasswordModalOpen, setIsForgotPasswordModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true); // Loading state
 
   const fetchExperiences = async () => {
@@ -65,22 +59,6 @@ const PlacementsPage: React.FC = () => {
     setExpandedCompany(expandedCompany === companyName ? null : companyName);
   };
 
-  const handleSwitchToSignUp = () => {
-    setIsLoginModalOpen(false);
-    setIsSignUpModalOpen(true);
-  };
-
-  const handleSwitchToLogin = () => {
-    setIsSignUpModalOpen(false);
-    setIsForgotPasswordModalOpen(false);
-    setIsLoginModalOpen(true);
-  };
-
-  const handleSwitchToForgotPassword = () => {
-    setIsLoginModalOpen(false);
-    setIsForgotPasswordModalOpen(true);
-  };
-
   return (
     <>
       <style>{`
@@ -108,7 +86,7 @@ const PlacementsPage: React.FC = () => {
         ) : (
           <>
             <div className="absolute inset-0 bg-black/70 z-0"></div>
-            <Header setIsLoginModalOpen={setIsLoginModalOpen} setIsSignUpModalOpen={setIsSignUpModalOpen}/>
+
 
             <div className="relative z-10 container mx-auto px-4 py-8 mt-24">
               <div className="flex justify-between items-center mb-8">
@@ -199,22 +177,6 @@ const PlacementsPage: React.FC = () => {
         )}
 
         {isFormOpen && <ExperienceForm onClose={() => setIsFormOpen(false)} />}
-        <LoginPage 
-            isOpen={isLoginModalOpen} 
-            onClose={() => setIsLoginModalOpen(false)} 
-            onSwitchToSignUp={handleSwitchToSignUp} 
-            onSwitchToForgotPassword={handleSwitchToForgotPassword} 
-        />
-        <SignUpPage 
-            isOpen={isSignUpModalOpen} 
-            onClose={() => setIsSignUpModalOpen(false)} 
-            onSwitchToLogin={handleSwitchToLogin} 
-        />
-        <ForgotPassword 
-            isOpen={isForgotPasswordModalOpen} 
-            onClose={() => setIsForgotPasswordModalOpen(false)} 
-            onSwitchToLogin={handleSwitchToLogin} 
-        />
       </div>
     </>
   );

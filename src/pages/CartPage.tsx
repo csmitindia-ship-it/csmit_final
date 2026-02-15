@@ -1,10 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
-import Header from "../ui/Header";
-import LoginPage from '../Login_Sign/LoginPage';
-import SignUpPage from '../Login_Sign/SignUpPage';
-import ForgotPassword from '../Login_Sign/Forgot_Pass';
+
 import backgroundImage from '../Login_Sign/photo.jpeg';
 import WorkshopRegistrationForm from './WorkshopRegistrationForm';
 import ThemedModal from '../components/ThemedModal';
@@ -14,27 +11,8 @@ const CartPage: React.FC = () => {
   const { user } = useAuth();
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
-  const [isSignUpModalOpen, setIsSignUpModalOpen] = useState(false);
-  const [isForgotPasswordModalOpen, setIsForgotPasswordModalOpen] = useState(false);
   const [showRegistrationForm, setShowRegistrationForm] = useState(false);
   const [modal, setModal] = useState({ isOpen: false, title: '', message: '' });
-
-  const handleSwitchToSignUp = () => {
-    setIsLoginModalOpen(false);
-    setIsSignUpModalOpen(true);
-  };
-
-  const handleSwitchToLogin = () => {
-    setIsSignUpModalOpen(false);
-    setIsForgotPasswordModalOpen(false);
-    setIsLoginModalOpen(true);
-  };
-
-  const handleSwitchToForgotPassword = () => {
-    setIsLoginModalOpen(false);
-    setIsForgotPasswordModalOpen(true);
-  };
 
   interface CartItem {
     cartId: number;
@@ -250,7 +228,6 @@ const CartPage: React.FC = () => {
 
         <div className="absolute inset-0 bg-black/70 z-0"></div>
 
-        <Header setIsLoginModalOpen={setIsLoginModalOpen} setIsSignUpModalOpen={setIsSignUpModalOpen} />
 
         <main className="relative z-10 flex items-center justify-center min-h-screen pt-16">
           <div className="container mx-auto p-4 bg-gray-900/70 backdrop-blur-md border border-purple-500/30 rounded-lg">
@@ -370,23 +347,6 @@ const CartPage: React.FC = () => {
         >
           <p>{modal.message}</p>
         </ThemedModal>
-
-        <LoginPage
-          isOpen={isLoginModalOpen}
-          onClose={() => setIsLoginModalOpen(false)}
-          onSwitchToSignUp={handleSwitchToSignUp}
-          onSwitchToForgotPassword={handleSwitchToForgotPassword}
-        />
-        <SignUpPage
-          isOpen={isSignUpModalOpen}
-          onClose={() => setIsSignUpModalOpen(false)}
-          onSwitchToLogin={handleSwitchToLogin}
-        />
-        <ForgotPassword
-          isOpen={isForgotPasswordModalOpen}
-          onClose={() => setIsForgotPasswordModalOpen(false)}
-          onSwitchToLogin={handleSwitchToLogin}
-        />
       </div>
     </>
   );

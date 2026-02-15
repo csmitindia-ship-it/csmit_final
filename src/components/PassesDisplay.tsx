@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import API_BASE_URL from '../Config';
 import { FiTag, FiX } from 'react-icons/fi';
 import { useAuth } from '../context/AuthContext';
+import { useModal } from '../context/ModalContext'; // Import useModal
 import { useNavigate } from 'react-router-dom';
 import ThemedModal from './ThemedModal';
 
@@ -24,6 +25,7 @@ const PassesDisplay: React.FC = () => {
     const [cartItems, setCartItems] = useState<CartItem[]>([]);
     const [verifiedPassIds, setVerifiedPassIds] = useState<number[]>([]);
     const { user, isLoggedIn } = useAuth();
+    const { openLoginModal } = useModal(); // Use opensLoginModal from context
     const navigate = useNavigate();
     const [modal, setModal] = useState({ isOpen: false, title: '', message: '', type: 'info' });
 
@@ -94,7 +96,7 @@ const PassesDisplay: React.FC = () => {
 
     const handleAddToCart = async (pass: Pass) => {
         if (!isLoggedIn) {
-            setModal({ isOpen: true, title: 'Login Required', message: 'Please log in to add items to your cart.', type: 'info' });
+            openLoginModal(); // Use openLoginModal
             return;
         }
 
@@ -242,7 +244,7 @@ const PassesDisplay: React.FC = () => {
                                 )
                             ) : (
                                 <button
-                                    onClick={() => navigate('/login')}
+                                    onClick={() => openLoginModal()} // Use openLoginModal
                                     className="w-full bg-gray-600 text-white py-2 rounded-lg hover:bg-gray-700 transition-colors"
                                 >
                                     Log in to Purchase

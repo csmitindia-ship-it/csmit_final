@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import Header from '../ui/Header';
+
 import { useAuth } from '../context/AuthContext';
 import Loader from '../components/Loader';
 import backgroundImage from '../Login_Sign/photo.jpeg';
@@ -209,7 +209,6 @@ const EnrolledEventsPage: React.FC = () => {
       ></div>
       <div className="absolute inset-0 bg-black/70 z-0"></div>
 
-      <Header setIsLoginModalOpen={() => { }} setIsSignUpModalOpen={() => { }} />
       <main className="relative z-10 pt-16">
         <div className="container mx-auto p-4 pt-20">
           <h2 className="text-3xl font-bold text-white mb-8 text-center">My Enrollments</h2>

@@ -2,16 +2,13 @@ import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import Logo from "../Photos/Logo.png";
 import { useAuth } from "../context/AuthContext";
+import { useModal } from "../context/ModalContext";
 import ThemedModal from "../components/ThemedModal";
 import { FiLogIn, FiUserPlus, FiLogOut, FiMenu, FiX } from "react-icons/fi";
 import API_BASE_URL from "../Config";
 
-interface HeaderProps {
-  setIsLoginModalOpen: React.Dispatch<React.SetStateAction<boolean>>;
-  setIsSignUpModalOpen: React.Dispatch<React.SetStateAction<boolean>>;
-}
-
-const Header: React.FC<HeaderProps> = ({ setIsLoginModalOpen, setIsSignUpModalOpen }) => {
+const Header: React.FC = () => {
+  const { openLoginModal, openSignUpModal } = useModal();
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuth();
@@ -279,14 +276,14 @@ const Header: React.FC<HeaderProps> = ({ setIsLoginModalOpen, setIsSignUpModalOp
           ) : (
             <>
               <button
-                onClick={() => { setIsLoginModalOpen(true); if (isMobileMenuOpen) setIsMobileMenuOpen(false); }}
+                onClick={() => { openLoginModal(); if (isMobileMenuOpen) setIsMobileMenuOpen(false); }}
                 className="flex items-center px-4 py-2 text-sm bg-purple-600 text-white rounded-md hover:bg-purple-700 transition"
               >
                 <FiLogIn className="mr-2" />
                 Login
               </button>
               <button
-                onClick={() => { setIsSignUpModalOpen(true); if (isMobileMenuOpen) setIsMobileMenuOpen(false); }}
+                onClick={() => { openSignUpModal(); if (isMobileMenuOpen) setIsMobileMenuOpen(false); }}
                 className="flex items-center px-4 py-2 text-sm border border-purple-400 text-purple-400 rounded-md hover:bg-purple-400 hover:text-black transition"
               >
                 <FiUserPlus className="mr-2" />
@@ -338,14 +335,14 @@ const Header: React.FC<HeaderProps> = ({ setIsLoginModalOpen, setIsSignUpModalOp
               ) : (
                 <>
                   <button
-                    onClick={() => { setIsLoginModalOpen(true); if (isMobileMenuOpen) setIsMobileMenuOpen(false); }}
+                    onClick={() => { openLoginModal(); if (isMobileMenuOpen) setIsMobileMenuOpen(false); }}
                     className="flex items-center px-4 py-2 text-sm bg-purple-600 text-white rounded-md hover:bg-purple-700 transition"
                   >
                     <FiLogIn className="mr-2" />
                     Login
                   </button>
                   <button
-                    onClick={() => { setIsSignUpModalOpen(true); if (isMobileMenuOpen) setIsMobileMenuOpen(false); }}
+                    onClick={() => { openSignUpModal(); if (isMobileMenuOpen) setIsMobileMenuOpen(false); }}
                     className="flex items-center px-4 py-2 text-sm border border-purple-400 text-purple-400 rounded-md hover:bg-purple-400 hover:text-black transition"
                   >
                     <FiUserPlus className="mr-2" />

@@ -10,8 +10,10 @@ import AdminEventsDisplayPage from "./pages/AdminEventsDisplayPage.tsx";
 import AccountDetailsPage from "./pages/AccountDetailsPage.tsx";
 import PlacementsPage from "./placements/PlacementsPage";
 import LoginWrapper from "./Login_Sign/LoginWrapper";
+import LoginPage from "./Login_Sign/LoginPage";
 import SignUpPage from "./Login_Sign/SignUpPage";
 import ForgotPassword from "./Login_Sign/Forgot_Pass";
+import { ModalProvider, useModal } from "./context/ModalContext";
 import EventsPage from "./pages/EventsPage.tsx";
 import RegistrationPage from "./pages/RegistrationPage.tsx";
 import ProtectedRoute from "./ProtectedRoute.tsx";
@@ -40,11 +42,28 @@ import BulkSendConfirmationEmailPage from "./pages/BulkSendConfirmationEmailPage
 import ManageOfferPage from "./pages/ManageOfferPage.tsx";
 
 export default function App() {
+  return (
+    <ModalProvider>
+      <AppContent />
+    </ModalProvider>
+  );
+}
+
+function AppContent() {
   const [showIntro, setShowIntro] = useState(sessionStorage.getItem("introSeen") !== "true");
   const [currentLine, setCurrentLine] = useState(0);
   const [text, setText] = useState("");
   const { user } = useAuth();
   const location = useLocation();
+  const {
+    isLoginModalOpen,
+    isSignUpModalOpen,
+    isForgotPasswordModalOpen,
+    closeAllModals,
+    switchToSignUp,
+    switchToLogin,
+    switchToForgotPassword,
+  } = useModal();
 
   const lines = ["Welcome to CSMIT", "Empowering Future Technocrats..."];
 
@@ -77,13 +96,17 @@ export default function App() {
   // Render header dynamically
   const renderHeader = () => {
     const path = location.pathname;
+    // HomePage renders its own Header with modals, skip the App-level one
+    if (path === "/") {
+      return null;
+    }
     if (user?.role === "admin") {
       return <AdminHeader />;
     }
     if (user?.role === "organizer" && path.startsWith("/organizer")) {
       return <OrganizerHeader />;
     }
-    return <Header setIsLoginModalOpen={() => { }} setIsSignUpModalOpen={() => { }} />;
+    return <Header />;
   };
 
   if (showIntro) {
@@ -120,6 +143,25 @@ export default function App() {
   return (
     <>
       {renderHeader()}
+
+      {/* Global Login/SignUp/ForgotPassword Modals */}
+      <LoginPage
+        isOpen={isLoginModalOpen}
+        onClose={closeAllModals}
+        onSwitchToSignUp={switchToSignUp}
+        onSwitchToForgotPassword={switchToForgotPassword}
+      />
+      <SignUpPage
+        isOpen={isSignUpModalOpen}
+        onClose={closeAllModals}
+        onSwitchToLogin={switchToLogin}
+      />
+      <ForgotPassword
+        isOpen={isForgotPasswordModalOpen}
+        onClose={closeAllModals}
+        onSwitchToLogin={switchToLogin}
+      />
+
       <Routes>
         {/* Admin routes (protected) */}
         <Route element={<ProtectedRoute role={["admin"]} />}>
