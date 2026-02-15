@@ -25,6 +25,7 @@ import Mam from './Photos/Mam.jpeg';
 import Kamalesh from './Photos/Kamalesh.jpg';
 import Sindhu from './Photos/Sindhu.jpg';
 import Zoho from './Photos/Zoho.png';
+import Mentor from './Photos/Mentorfox.png'
 import Spiro from './Photos/Spiro.jpeg';
 import Poorvika from './Photos/Poorvika.png';
 import Acer from './Photos/Acer.png';
@@ -85,14 +86,15 @@ const faculty = [
 ];
 
 const sponsors = [
-  { name: 'Zoho', logoUrl: Zoho },
-  { name: 'Spiro', logoUrl: Spiro },
-  { name: 'Poorvika', logoUrl: Poorvika },
-  { name: 'Acer', logoUrl: Acer },
-  { name: 'Cognizant', logoUrl: Cognizant },
-  { name: 'IBM', logoUrl: Ibm },
-  { name: 'Indian', logoUrl: Indian },
-  { name: 'LIC', logoUrl: Lic }
+  { name: 'Mentorfox', logoUrl: Mentor, link: 'https://mentorfox.io/' },
+  { name: 'Zoho', logoUrl: Zoho, link: 'https://www.zoho.com/' },
+  { name: 'Spiro', logoUrl: Spiro, link: 'https://spiroprojects.com/' },
+  { name: 'Poorvika', logoUrl: Poorvika, link: 'https://poorvika.com/' },
+  { name: 'Acer', logoUrl: Acer, link: 'https://www.acer.com/' },
+  { name: 'Cognizant', logoUrl: Cognizant, link: 'https://www.cognizant.com/' },
+  { name: 'IBM', logoUrl: Ibm, link: 'https://www.ibm.com/' },
+  { name: 'Indian', logoUrl: Indian, link: 'https://www.indianbank.in/' },
+  { name: 'LIC', logoUrl: Lic, link: 'https://licindia.in/' }
 ];
 
 export default function HomePage() {
@@ -363,12 +365,22 @@ export default function HomePage() {
             <div className="relative w-full overflow-hidden">
               <div className="flex animate-marquee">
                 {[...sponsors, ...sponsors].map((sponsor, index) => (
-                  <div key={index} className="flex-shrink-0 w-48 mx-6 flex items-center justify-center">
-                    <img
-                      src={sponsor.logoUrl}
-                      alt={sponsor.name}
-                      className="h-12 object-contain transition-all duration-300"
-                    />
+                  <div key={index} className="flex-shrink-0 w-48 mx-6 flex flex-col items-center justify-center">
+                    <a
+                      href={sponsor.link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex flex-col items-center justify-center w-full h-full group"
+                    >
+                      <img
+                        src={sponsor.logoUrl}
+                        alt={sponsor.name}
+                        className="h-12 object-contain transition-all duration-300 group-hover:scale-110 mb-2"
+                      />
+                      <span className="text-gray-400 text-sm font-medium group-hover:text-purple-400 transition-colors">
+                        {sponsor.name}
+                      </span>
+                    </a>
                   </div>
                 ))}
               </div>
