@@ -86,15 +86,15 @@ const faculty = [
 ];
 
 const sponsors = [
-  { name: 'Mentorfox', logoUrl: Mentor, link: 'https://mentorfox.io/' },
-  { name: 'Zoho', logoUrl: Zoho, link: 'https://www.zoho.com/' },
-  { name: 'Spiro', logoUrl: Spiro, link: 'https://spiroprojects.com/' },
-  { name: 'Poorvika', logoUrl: Poorvika, link: 'https://poorvika.com/' },
-  { name: 'Acer', logoUrl: Acer, link: 'https://www.acer.com/' },
-  { name: 'Cognizant', logoUrl: Cognizant, link: 'https://www.cognizant.com/' },
-  { name: 'IBM', logoUrl: Ibm, link: 'https://www.ibm.com/' },
-  { name: 'Indian', logoUrl: Indian, link: 'https://www.indianbank.in/' },
-  { name: 'LIC', logoUrl: Lic, link: 'https://licindia.in/' }
+  { name: 'Mentorfox', logoUrl: Mentor, link: 'https://mentorfox.io/', description: 'A leading mentorship platform connecting students with industry experts.' },
+  { name: 'Zoho', logoUrl: Zoho, link: 'https://www.zoho.com/', description: 'A global software company offering a comprehensive suite of business applications.' },
+  { name: 'Spiro', logoUrl: Spiro, link: 'https://spiroprojects.com/', description: 'A premier project center providing technical training and development solutions.' },
+  { name: 'Poorvika', logoUrl: Poorvika, link: 'https://poorvika.com/', description: 'India\'s largest tech retailer for mobiles, laptops, and accessories.' },
+  { name: 'Acer', logoUrl: Acer, link: 'https://www.acer.com/', description: 'A multinational leader in hardware and electronics innovation.' },
+  { name: 'Cognizant', logoUrl: Cognizant, link: 'https://www.cognizant.com/', description: 'A multinational IT services and consulting company.' },
+  { name: 'IBM', logoUrl: Ibm, link: 'https://www.ibm.com/', description: 'A global leader in cloud computing, AI, and business consulting.' },
+  { name: 'Indian', logoUrl: Indian, link: 'https://www.indianbank.in/', description: 'A premier public sector bank serving the nation with financial solutions.' },
+  { name: 'LIC', logoUrl: Lic, link: 'https://licindia.in/', description: 'India\'s largest insurance corporation providing life insurance and investment products.' }
 ];
 
 export default function HomePage() {
@@ -365,21 +365,26 @@ export default function HomePage() {
             <div className="relative w-full overflow-hidden">
               <div className="flex animate-marquee">
                 {[...sponsors, ...sponsors].map((sponsor, index) => (
-                  <div key={index} className="flex-shrink-0 w-48 mx-6 flex flex-col items-center justify-center">
+                  <div key={index} className="flex-shrink-0 w-80 mx-8 flex flex-col items-center justify-center p-4 bg-gray-800/10 rounded-xl hover:bg-gray-800/30 transition-all duration-300 border border-gray-700/30 hover:border-purple-500/30">
                     <a
                       href={sponsor.link}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex flex-col items-center justify-center w-full h-full group"
+                      className="flex flex-col items-center justify-center w-full group text-center"
                     >
-                      <img
-                        src={sponsor.logoUrl}
-                        alt={sponsor.name}
-                        className="h-12 object-contain transition-all duration-300 group-hover:scale-110 mb-2"
-                      />
-                      <span className="text-gray-400 text-sm font-medium group-hover:text-purple-400 transition-colors">
+                      <div className="h-24 w-full flex items-center justify-center mb-4 bg-white/5 rounded-lg p-2">
+                        <img
+                          src={sponsor.logoUrl}
+                          alt={sponsor.name}
+                          className="max-h-full max-w-full object-contain transition-all duration-300 group-hover:scale-110"
+                        />
+                      </div>
+                      <h4 className="text-lg font-bold text-white mb-2 group-hover:text-purple-400 transition-colors">
                         {sponsor.name}
-                      </span>
+                      </h4>
+                      <p className="text-sm text-gray-400 leading-relaxed group-hover:text-gray-300 transition-colors">
+                        {sponsor.description}
+                      </p>
                     </a>
                   </div>
                 ))}

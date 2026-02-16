@@ -192,6 +192,7 @@ const EventsPage: React.FC = () => {
     const handleRegistrationComplete = () => {
       fetchRegisteredEvents();
       fetchVerifiedPasses();
+      fetchCartItems();
     };
 
     window.addEventListener('registrationComplete', handleRegistrationComplete);
@@ -226,6 +227,74 @@ const EventsPage: React.FC = () => {
       setIsCartActionInProgress(false);
     }
   }, [cartItems]);
+
+  const cleanupCoveredEvents = async () => {
+    if (cartItems.length === 0) return;
+
+    const itemsToRemove = cartItems.filter(item => {
+      if (item.type !== 'event' || !item.eventDetails) return false;
+
+      const category = item.eventDetails.eventCategory.toLowerCase();
+      const isTechnical = category.includes('technical') && !category.includes('non');
+      const isNonTechnical = category.includes('non-technical') || category.includes('non technical');
+
+      const hasTechPass = activePasses.some(pass => {
+        const passLower = pass.toLowerCase();
+        return passLower.includes('tech') &&
+          !passLower.includes('non-tech') &&
+          !passLower.includes('nontech') &&
+          !passLower.includes('non tech');
+      }) || cartItems.some(item => {
+        if (item.type !== 'pass' || !item.passDetails?.name) return false;
+        const passLower = item.passDetails.name.toLowerCase();
+        return passLower.includes('tech') &&
+          !passLower.includes('non-tech') &&
+          !passLower.includes('nontech') &&
+          !passLower.includes('non tech');
+      });
+
+      const hasNonTechPass = activePasses.some(pass => {
+        const passLower = pass.toLowerCase();
+        return passLower.includes('non-tech') ||
+          passLower.includes('nontech') ||
+          passLower.includes('non tech');
+      }) || cartItems.some(item => {
+        if (item.type !== 'pass' || !item.passDetails?.name) return false;
+        const passLower = item.passDetails.name.toLowerCase();
+        return passLower.includes('non-tech') ||
+          passLower.includes('nontech') ||
+          passLower.includes('non tech');
+      });
+
+      return (isTechnical && hasTechPass) || (isNonTechnical && hasNonTechPass);
+    });
+
+    if (itemsToRemove.length > 0) {
+      if (isCartActionInProgress) return; // Prevent conflicting updates
+      setIsCartActionInProgress(true);
+      try {
+        await Promise.all(itemsToRemove.map(item =>
+          axios.delete(`${API_BASE_URL}/cart/${item.cartId}`, { data: { userEmail: user?.email } })
+        ));
+
+        await fetchCartItems();
+
+        setModalContent({
+          title: 'Cart Updated',
+          message: 'Some events have been removed from your cart because they are covered by your active passes.'
+        });
+        setIsModalOpen(true);
+      } catch (error) {
+        console.error("Error cleaning up cart:", error);
+      } finally {
+        setIsCartActionInProgress(false);
+      }
+    }
+  };
+
+  useEffect(() => {
+    cleanupCoveredEvents();
+  }, [activePasses, cartItems]);
 
   const filteredEvents = Array.isArray(events) ? events
     .filter(event => event.symposiumName === activeSymposium)
@@ -403,6 +472,25 @@ const EventsPage: React.FC = () => {
 
                 const hasPassCoverage = (isTechnicalEvent && hasTechPass) || (isNonTechnicalEvent && hasNonTechPass);
 
+                // Check if user has tech or non-tech pass in cart
+
+                const techPassInCart = cartItems.some((item: any) => {
+                  return item.type === 'pass' && item.passDetails?.name &&
+                    item.passDetails.name.toLowerCase().includes('tech') &&
+                    !item.passDetails.name.toLowerCase().includes('non-tech') &&
+                    !item.passDetails.name.toLowerCase().includes('nontech') &&
+                    !item.passDetails.name.toLowerCase().includes('non tech');
+                });
+
+                const nonTechPassInCart = cartItems.some((item: any) => {
+                  return item.type === 'pass' && item.passDetails?.name &&
+                    (item.passDetails.name.toLowerCase().includes('non-tech') ||
+                      item.passDetails.name.toLowerCase().includes('nontech') ||
+                      item.passDetails.name.toLowerCase().includes('non tech'));
+                });
+
+                const isCoveredByCartPass = (isTechnicalEvent && techPassInCart) || (isNonTechnicalEvent && nonTechPassInCart);
+
                 const isMITStudent = isMITStudentHelper(user?.college);
 
                 // Use MIT discount if available and user is MIT student, otherwise fallback to general discount.
@@ -484,7 +572,7 @@ const EventsPage: React.FC = () => {
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              if (isRegistered || hasPassCoverage) return;
+                              if (isRegistered || hasPassCoverage || isCoveredByCartPass) return;
                               if (event.registrationFees === 0) {
                                 handleFreeRegistration(event);
                               } else {
@@ -495,8 +583,8 @@ const EventsPage: React.FC = () => {
                                 }
                               }
                             }}
-                            disabled={isRegistrationClosed || isCartActionInProgress || isRegistered || hasPassCoverage || !isLoggedIn || (!isMITStudent && event.open_to_non_mit === 0)}
-                            className={`mt-4 inline-block px-4 py-2 font-semibold rounded-lg transition ${hasPassCoverage
+                            disabled={isRegistrationClosed || isCartActionInProgress || isRegistered || hasPassCoverage || !isLoggedIn || (!isMITStudent && event.open_to_non_mit === 0) || isCoveredByCartPass}
+                            className={`mt-4 inline-block px-4 py-2 font-semibold rounded-lg transition ${hasPassCoverage || isCoveredByCartPass
                               ? 'bg-teal-600 text-white cursor-not-allowed'
                               : isRegistered
                                 ? 'bg-gray-600 text-white cursor-not-allowed'
@@ -511,19 +599,21 @@ const EventsPage: React.FC = () => {
                           >
                             {hasPassCoverage
                               ? 'Pass Obtained'
-                              : isRegistered
-                                ? 'Registered'
-                                : !isLoggedIn
-                                  ? 'Login to Register'
-                                  : (!isMITStudent && event.open_to_non_mit === 0)
-                                    ? 'MIT Only Event'
-                                    : isRegistrationClosed
-                                      ? 'Registration Closed'
-                                      : event.registrationFees === 0
-                                        ? 'Register for Free'
-                                        : isInCart
-                                          ? 'Remove from Cart'
-                                          : 'Add to Cart'}
+                              : isCoveredByCartPass
+                                ? 'Pass Added to Cart'
+                                : isRegistered
+                                  ? 'Registered'
+                                  : !isLoggedIn
+                                    ? 'Login to Register'
+                                    : (!isMITStudent && event.open_to_non_mit === 0)
+                                      ? 'MIT Only Event'
+                                      : isRegistrationClosed
+                                        ? 'Registration Closed'
+                                        : event.registrationFees === 0
+                                          ? 'Register for Free'
+                                          : isInCart
+                                            ? 'Remove from Cart'
+                                            : 'Add to Cart'}
                           </button>
                         </>
                       )}
@@ -536,7 +626,7 @@ const EventsPage: React.FC = () => {
         </div>
       )}
 
-      <PassesDisplay />
+      <PassesDisplay onCartUpdate={fetchCartItems} />
 
       <ThemedModal
         isOpen={isModalOpen}

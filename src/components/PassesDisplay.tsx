@@ -19,7 +19,11 @@ interface CartItem {
     passId: number;
 }
 
-const PassesDisplay: React.FC = () => {
+interface PassesDisplayProps {
+    onCartUpdate?: () => void;
+}
+
+const PassesDisplay: React.FC<PassesDisplayProps> = ({ onCartUpdate }) => {
     const [passes, setPasses] = useState<Pass[]>([]);
     const [selectedPass, setSelectedPass] = useState<Pass | null>(null);
     const [cartItems, setCartItems] = useState<CartItem[]>([]);
@@ -112,6 +116,7 @@ const PassesDisplay: React.FC = () => {
             if (response.ok) {
                 setModal({ isOpen: true, title: 'Success', message: `${pass.name} added to cart!`, type: 'success' });
                 fetchCartItems();
+                if (onCartUpdate) onCartUpdate();
                 setSelectedPass(null);
             } else {
                 const errorData = await response.json();
@@ -139,8 +144,10 @@ const PassesDisplay: React.FC = () => {
             if (response.ok) {
                 setModal({ isOpen: true, title: 'Success', message: 'Pass removed from cart.', type: 'info' });
                 fetchCartItems();
+                if (onCartUpdate) onCartUpdate();
                 setSelectedPass(null);
             } else {
+
                 const errorData = await response.json();
                 setModal({ isOpen: true, title: 'Error', message: errorData.message || 'Failed to remove item from cart.', type: 'error' });
             }
