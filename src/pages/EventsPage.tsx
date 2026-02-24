@@ -365,6 +365,7 @@ const EventsPage: React.FC = () => {
     try {
       await axios.post(`${API_BASE_URL}/registrations/simple`, {
         userEmail: user.email,
+        userId: user.id,
         eventId: event.id,
         userName: user.name,
         email: user.email,

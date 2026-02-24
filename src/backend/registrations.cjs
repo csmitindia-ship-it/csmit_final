@@ -452,7 +452,7 @@ module.exports = function (db, uploadTransactionScreenshot) {
   });
 
   router.post('/simple', async (req, res) => {
-    const { userEmail, eventId, userName, college } = req.body;
+    const { userEmail, userId, eventId, userName, college } = req.body;
 
     if (!userEmail || !eventId || !userName || !college) {
       return res
@@ -461,7 +461,7 @@ module.exports = function (db, uploadTransactionScreenshot) {
     }
 
     try {
-      // [MODIFIED] Fetch discountPercentage to check if event is effectively free
+      // Fetch event details to verify it is a free event
       const [[event]] = await db.execute(
         `SELECT eventName, registrationFees, discountPercentage, 'Enigma' as symposium 
          FROM enigma_events WHERE id = ? 
@@ -475,11 +475,11 @@ module.exports = function (db, uploadTransactionScreenshot) {
         return res.status(404).json({ message: 'Event not found.' });
       }
 
-      // [MODIFIED] Calculate effective price
+      // Calculate effective price
       const discount = event.discountPercentage || 0;
       const effectiveFee = Math.floor(event.registrationFees * (1 - discount / 100));
 
-      // [MODIFIED] Check effective fee instead of raw registrationFees
+      // Only allow free events through this endpoint
       if (effectiveFee > 0) {
         return res.status(400).json({ message: 'This endpoint is only for free events.' });
       }
@@ -508,8 +508,28 @@ module.exports = function (db, uploadTransactionScreenshot) {
         ]
       );
 
+      // Resolve userId if not provided in the request body
+      let resolvedUserId = userId;
+      if (!resolvedUserId) {
+        const [[userRow]] = await db.execute('SELECT id FROM users WHERE email = ?', [userEmail]);
+        if (userRow) resolvedUserId = userRow.id;
+      }
+
+      // Auto-verify the free registration so it appears in My Events
+      if (resolvedUserId) {
+        await db.execute(
+          'DELETE FROM verified_registrations WHERE userId = ? AND eventId = ?',
+          [resolvedUserId, eventId]
+        );
+        await db.execute(
+          'INSERT INTO verified_registrations (userId, eventId, verified) VALUES (?, ?, 1)',
+          [resolvedUserId, eventId]
+        );
+      }
+
       res.status(201).json({ message: 'Registration successful.' });
     } catch (error) {
+      console.error('Simple registration failed:', error);
       res.status(500).json({ message: 'Failed to register.' });
     }
   });
