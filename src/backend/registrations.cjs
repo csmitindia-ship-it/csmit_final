@@ -452,7 +452,7 @@ module.exports = function (db, uploadTransactionScreenshot) {
   });
 
   router.post('/simple', async (req, res) => {
-    const { userEmail, userId, eventId, userName, college } = req.body;
+    const { userEmail, userId, eventId, userName, college, isMITStudent } = req.body;
 
     if (!userEmail || !eventId || !userName || !college) {
       return res
@@ -462,22 +462,28 @@ module.exports = function (db, uploadTransactionScreenshot) {
 
     try {
       // Fetch event details to verify it is a free event
-      const [[event]] = await db.execute(
-        `SELECT eventName, registrationFees, discountPercentage, 'Enigma' as symposium 
-         FROM enigma_events WHERE id = ? 
-         UNION 
-         SELECT eventName, registrationFees, discountPercentage, 'Carteblanche' as symposium 
-         FROM carte_blanche_events WHERE id = ?`,
-        [eventId, eventId]
+      // Query each table separately so we also get mit_discount_percentage
+      const [[enigmaEvent]] = await db.execute(
+        `SELECT eventName, registrationFees, discountPercentage, mit_discount_percentage, 'Enigma' as symposium FROM enigma_events WHERE id = ?`,
+        [eventId]
       );
+      const [[cbEvent]] = await db.execute(
+        `SELECT eventName, registrationFees, discountPercentage, mit_discount_percentage, 'Carteblanche' as symposium FROM carte_blanche_events WHERE id = ?`,
+        [eventId]
+      );
+      const event = enigmaEvent || cbEvent;
 
       if (!event) {
         return res.status(404).json({ message: 'Event not found.' });
       }
 
-      // Calculate effective price
-      const discount = event.discountPercentage || 0;
-      const effectiveFee = Math.floor(event.registrationFees * (1 - discount / 100));
+      // Determine the applicable discount: MIT students get MIT discount (if set), otherwise general discount
+      const mitDiscount = event.mit_discount_percentage || 0;
+      const genDiscount = event.discountPercentage || 0;
+      const applicableDiscount = isMITStudent && mitDiscount > 0 ? mitDiscount : genDiscount;
+
+      // Calculate effective price after the applicable discount
+      const effectiveFee = Math.floor(event.registrationFees * (1 - applicableDiscount / 100));
 
       // Only allow free events through this endpoint
       if (effectiveFee > 0) {

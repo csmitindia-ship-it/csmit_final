@@ -360,6 +360,10 @@ const EventsPage: React.FC = () => {
   };
 
   const handleFreeRegistration = async (event: Event) => {
+    if (!isLoggedIn) {
+      openLoginModal();
+      return;
+    }
     if (!user) return;
 
     try {
@@ -370,6 +374,7 @@ const EventsPage: React.FC = () => {
         userName: user.name,
         email: user.email,
         college: user.college,
+        isMITStudent: isMITStudentHelper(user.college),
       });
       setRegisteredEvents([...registeredEvents, event.id]);
       setModalContent({ title: 'Registration Successful', message: `You have successfully registered for ${event.eventName}.` });
@@ -515,6 +520,12 @@ const EventsPage: React.FC = () => {
                   reasonToShow = event.discountReason || '';
                 }
 
+                // Compute the effective fee after the applicable discount
+                const effectiveFee = discountToShow > 0
+                  ? Math.floor(event.registrationFees * (1 - discountToShow / 100))
+                  : event.registrationFees;
+                const isFreeEvent = effectiveFee === 0;
+
                 return (
                   <div
                     key={event.id}
@@ -545,9 +556,13 @@ const EventsPage: React.FC = () => {
                             <div className="flex flex-col">
                               <div className="flex items-center gap-2">
                                 <span className="line-through text-red-400 text-sm">₹{event.registrationFees}</span>
-                                <span className="text-green-400 font-bold text-lg">
-                                  ₹{Math.floor(event.registrationFees * (1 - discountToShow / 100))}
-                                </span>
+                                {isFreeEvent ? (
+                                  <span className="text-green-400 font-bold text-lg">Free</span>
+                                ) : (
+                                  <span className="text-green-400 font-bold text-lg">
+                                    ₹{effectiveFee}
+                                  </span>
+                                )}
                               </div>
                               {reasonToShow && (
                                 <span className="text-xs text-yellow-400 italic">
@@ -574,7 +589,7 @@ const EventsPage: React.FC = () => {
                             onClick={(e) => {
                               e.stopPropagation();
                               if (isRegistered || hasPassCoverage || isCoveredByCartPass) return;
-                              if (event.registrationFees === 0) {
+                              if (isFreeEvent) {
                                 handleFreeRegistration(event);
                               } else {
                                 if (isInCart) {
@@ -591,7 +606,7 @@ const EventsPage: React.FC = () => {
                                 ? 'bg-gray-600 text-white cursor-not-allowed'
                                 : isRegistrationClosed
                                   ? 'bg-gray-500 text-gray-300 cursor-not-allowed'
-                                  : event.registrationFees === 0
+                                  : isFreeEvent
                                     ? 'bg-green-600 text-white hover:bg-green-700'
                                     : isInCart
                                       ? 'bg-red-600 text-white hover:bg-red-700'
@@ -610,7 +625,7 @@ const EventsPage: React.FC = () => {
                                       ? 'MIT Only Event'
                                       : isRegistrationClosed
                                         ? 'Registration Closed'
-                                        : event.registrationFees === 0
+                                        : isFreeEvent
                                           ? 'Register for Free'
                                           : isInCart
                                             ? 'Remove from Cart'
